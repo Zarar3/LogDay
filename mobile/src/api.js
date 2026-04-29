@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 const api = axios.create({
-  baseURL: 'https://your-app.railway.app/api',  // update after Railway deploy
+  baseURL: 'https://logday-production.up.railway.app/api', 
 });
 
 api.interceptors.request.use(async (config) => {
