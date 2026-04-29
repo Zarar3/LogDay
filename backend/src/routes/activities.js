@@ -1,0 +1,172 @@
+const router = require('express').Router();
+const prisma = require('../prisma');
+const auth   = require('../middleware/auth');
+const { getStreak } = require('../utils/streak');
+
+function activityInclude(userId) {
+  return {
+    _count: { select: { comments: true, likes: true } },
+    likes:  { where: { userId }, select: { id: true } },
+  };
+}
+
+function fmt(a) {
+  return {
+    id:          a.id,
+    userId:      a.userId,
+    type:        a.type,
+    duration:    a.duration,
+    notes:       a.notes,
+    imageBase64: a.imageBase64,
+    date:        a.date,
+    loggedAt:    a.loggedAt,
+    likeCount:   a._count?.likes    ?? 0,
+    commentCount:a._count?.comments ?? 0,
+    isLiked:     (a.likes?.length   ?? 0) > 0,
+  };
+}
+
+async function friendshipCheck(userAId, userBId) {
+  return prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { userAId, userBId },
+        { userAId: userBId, userBId: userAId },
+      ],
+    },
+  });
+}
+
+// GET /api/activities?date=YYYY-MM-DD
+router.get('/', auth, async (req, res) => {
+  const { date } = req.query;
+  const where = { userId: req.user.id };
+  if (date) where.date = date;
+
+  const activities = await prisma.activity.findMany({
+    where,
+    orderBy: { loggedAt: 'desc' },
+    include: activityInclude(req.user.id),
+  });
+  res.json(activities.map(fmt));
+});
+
+// POST /api/activities
+router.post('/', auth, async (req, res) => {
+  const { type, duration, notes, date, imageBase64 } = req.body;
+  if (!type || !date)
+    return res.status(400).json({ error: 'type and date are required' });
+  if (duration && (isNaN(duration) || duration > 240))
+    return res.status(400).json({ error: 'Duration cannot exceed 4 hours (240 minutes)' });
+
+  const activity = await prisma.activity.create({
+    data: { userId: req.user.id, type, duration, notes, date, imageBase64: imageBase64 || null },
+  });
+  res.status(201).json({ ...activity, likeCount: 0, commentCount: 0, isLiked: false });
+});
+
+// GET /api/activities/streak  — before /:id routes
+router.get('/streak', auth, async (req, res) => {
+  const streak = await getStreak(req.user.id);
+  res.json({ streak });
+});
+
+// GET /api/activities/user/:userId/streak  — before /user/:userId
+router.get('/user/:userId/streak', auth, async (req, res) => {
+  const { userId } = req.params;
+  const friendship = await friendshipCheck(req.user.id, userId);
+  if (!friendship) return res.status(403).json({ error: 'Not friends' });
+
+  const streak = await getStreak(userId);
+  res.json({ streak });
+});
+
+// GET /api/activities/user/:userId?date=YYYY-MM-DD  — friend's activities
+router.get('/user/:userId', auth, async (req, res) => {
+  const { userId } = req.params;
+  const { date }   = req.query;
+
+  const friendship = await friendshipCheck(req.user.id, userId);
+  if (!friendship)
+    return res.status(403).json({ error: 'You are not friends with this user' });
+
+  const where = { userId };
+  if (date) where.date = date;
+
+  const activities = await prisma.activity.findMany({
+    where,
+    orderBy: { loggedAt: 'desc' },
+    include: activityInclude(req.user.id),
+  });
+  res.json(activities.map(fmt));
+});
+
+// DELETE /api/activities/:id
+router.delete('/:id', auth, async (req, res) => {
+  const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
+  if (!activity || activity.userId !== req.user.id)
+    return res.status(404).json({ error: 'Activity not found' });
+
+  await prisma.activity.delete({ where: { id: req.params.id } });
+  res.json({ success: true });
+});
+
+// POST /api/activities/:id/like  — toggle like (any authenticated user)
+router.post('/:id/like', auth, async (req, res) => {
+  const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
+  if (!activity) return res.status(404).json({ error: 'Activity not found' });
+
+  const existing = await prisma.activityLike.findUnique({
+    where: { activityId_userId: { activityId: req.params.id, userId: req.user.id } },
+  });
+
+  if (existing) {
+    await prisma.activityLike.delete({ where: { id: existing.id } });
+    res.json({ liked: false });
+  } else {
+    await prisma.activityLike.create({
+      data: { activityId: req.params.id, userId: req.user.id },
+    });
+    res.json({ liked: true });
+  }
+});
+
+// GET /api/activities/:id/comments
+router.get('/:id/comments', auth, async (req, res) => {
+  const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
+  if (!activity) return res.status(404).json({ error: 'Activity not found' });
+
+  if (activity.userId !== req.user.id) {
+    const friendship = await friendshipCheck(req.user.id, activity.userId);
+    if (!friendship) return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  const comments = await prisma.comment.findMany({
+    where: { activityId: req.params.id },
+    include: { user: { select: { id: true, username: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+  res.json(comments);
+});
+
+// POST /api/activities/:id/comments
+router.post('/:id/comments', auth, async (req, res) => {
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Comment text required' });
+
+  const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
+  if (!activity) return res.status(404).json({ error: 'Activity not found' });
+
+  if (activity.userId !== req.user.id) {
+    const friendship = await friendshipCheck(req.user.id, activity.userId);
+    if (!friendship) return res.status(403).json({ error: 'Not authorized' });
+  }
+
+  const comment = await prisma.comment.create({
+    data: { activityId: req.params.id, userId: req.user.id, text: text.trim() },
+    include: { user: { select: { id: true, username: true } } },
+  });
+  res.status(201).json(comment);
+});
+
+module.exports = router;
