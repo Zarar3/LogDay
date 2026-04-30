@@ -15,7 +15,7 @@ function timeAgo(dateStr) {
 }
 
 export default function MessagesScreen({ navigation }) {
-  const { pageBg, accent } = useTheme();
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border } = useTheme();
   const [convos, setConvos]      = useState([]);
   const [refreshing, setRefresh] = useState(false);
 
@@ -39,22 +39,23 @@ export default function MessagesScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>💌</Text>
-            <Text style={styles.emptyTitle}>No messages yet</Text>
-            <Text style={styles.emptySub}>Tap the 💬 next to a friend to start chatting!</Text>
+            <Text style={[styles.emptyTitle, { color: textPrimary }]}>No messages yet</Text>
+            <Text style={[styles.emptySub, { color: textSecondary }]}>Tap the 💬 next to a friend to start chatting!</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row}
+          <TouchableOpacity
+            style={[styles.row, { backgroundColor: cardBg, borderBottomColor: border }]}
             onPress={() => navigation.navigate('Conversation', { friend: item.user })}>
             <View style={[styles.avatarCircle, { backgroundColor: accent + '22' }]}>
               <Text style={[styles.avatarLetter, { color: accent }]}>{item.user.username[0].toUpperCase()}</Text>
             </View>
             <View style={styles.rowBody}>
               <View style={styles.rowTop}>
-                <Text style={styles.rowName}>{item.user.username}</Text>
-                <Text style={styles.rowTime}>{timeAgo(item.lastMessage.createdAt)}</Text>
+                <Text style={[styles.rowName, { color: textPrimary }]}>{item.user.username}</Text>
+                <Text style={[styles.rowTime, { color: textSecondary }]}>{timeAgo(item.lastMessage.createdAt)}</Text>
               </View>
-              <Text style={styles.rowPreview} numberOfLines={1}>
+              <Text style={[styles.rowPreview, { color: textSecondary }]} numberOfLines={1}>
                 {item.lastMessage.senderId === item.user.id ? '' : 'You: '}{item.lastMessage.text}
               </Text>
             </View>
@@ -75,18 +76,18 @@ const styles = StyleSheet.create({
   header:       { padding: 24, paddingTop: 56 },
   heading:      { fontSize: 26, fontWeight: '800', color: '#fff' },
   list:         { paddingVertical: 8 },
-  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#e0f2fe', gap: 12 },
+  row:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, gap: 12 },
   avatarCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
   avatarLetter: { fontSize: 20, fontWeight: '800' },
   rowBody:      { flex: 1 },
   rowTop:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  rowName:      { fontWeight: '700', fontSize: 15, color: '#1e293b' },
-  rowTime:      { fontSize: 12, color: '#94a3b8' },
-  rowPreview:   { fontSize: 13, color: '#64748b' },
+  rowName:      { fontWeight: '700', fontSize: 15 },
+  rowTime:      { fontSize: 12 },
+  rowPreview:   { fontSize: 13 },
   badge:        { borderRadius: 12, minWidth: 22, height: 22, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   badgeText:    { color: '#fff', fontSize: 12, fontWeight: '700' },
   emptyBox:     { alignItems: 'center', marginTop: 80, paddingHorizontal: 32 },
   emptyEmoji:   { fontSize: 56, marginBottom: 14 },
-  emptyTitle:   { fontSize: 18, fontWeight: '700', color: '#334155' },
-  emptySub:     { color: '#94a3b8', marginTop: 6, fontSize: 14, textAlign: 'center' },
+  emptyTitle:   { fontSize: 18, fontWeight: '700' },
+  emptySub:     { marginTop: 6, fontSize: 14, textAlign: 'center' },
 });

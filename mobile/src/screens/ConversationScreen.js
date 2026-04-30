@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function ConversationScreen({ route, navigation }) {
   const { friend } = route.params;
-  const { pageBg, accent } = useTheme();
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
   const [messages, setMessages] = useState([]);
   const [myId, setMyId]         = useState(null);
   const [text, setText]         = useState('');
@@ -68,25 +68,27 @@ export default function ConversationScreen({ route, navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>👋</Text>
-            <Text style={styles.emptyText}>Say hi to {friend.username}!</Text>
+            <Text style={[styles.emptyText, { color: textSecondary }]}>Say hi to {friend.username}!</Text>
           </View>
         }
         renderItem={({ item }) => {
           const isMe = item.senderId === myId;
           return (
             <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
-              <View style={[styles.bubble, isMe ? { ...styles.bubbleMe, backgroundColor: accent } : styles.bubbleThem]}>
-                <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{item.text}</Text>
+              <View style={[styles.bubble, isMe ? { ...styles.bubbleMe, backgroundColor: accent } : { ...styles.bubbleThem, backgroundColor: cardBg, borderColor: border }]}>
+                <Text style={[styles.bubbleText, { color: isMe ? '#fff' : textPrimary }]}>{item.text}</Text>
               </View>
-              <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>{formatTime(item.createdAt)}</Text>
+              <Text style={[styles.bubbleTime, { color: textSecondary }, isMe && styles.bubbleTimeMe]}>{formatTime(item.createdAt)}</Text>
             </View>
           );
         }}
       />
 
-      <View style={styles.inputRow}>
-        <TextInput style={styles.input} placeholder={`Message ${friend.username}...`}
-          value={text} onChangeText={setText} placeholderTextColor="#94a3b8"
+      <View style={[styles.inputRow, { backgroundColor: cardBg, borderTopColor: border }]}>
+        <TextInput
+          style={[styles.input, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+          placeholder={`Message ${friend.username}...`}
+          value={text} onChangeText={setText} placeholderTextColor={textSecondary}
           multiline maxLength={500} />
         <TouchableOpacity style={[styles.sendBtn, { backgroundColor: accent }, !text.trim() && styles.sendBtnDisabled]}
           onPress={send} disabled={!text.trim()}>
@@ -108,18 +110,17 @@ const styles = StyleSheet.create({
   list:           { padding: 16, paddingBottom: 8 },
   emptyBox:       { alignItems: 'center', marginTop: 60 },
   emptyEmoji:     { fontSize: 48, marginBottom: 10 },
-  emptyText:      { color: '#94a3b8', fontSize: 15 },
+  emptyText:      { fontSize: 15 },
   bubbleRow:      { marginBottom: 12, alignItems: 'flex-start' },
   bubbleRowMe:    { alignItems: 'flex-end' },
   bubble:         { maxWidth: '75%', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleMe:       { borderBottomRightRadius: 4 },
-  bubbleThem:     { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#bae6fd', borderBottomLeftRadius: 4 },
-  bubbleText:     { fontSize: 15, color: '#1e293b' },
-  bubbleTextMe:   { color: '#fff' },
+  bubbleThem:     { borderWidth: 1.5, borderBottomLeftRadius: 4 },
+  bubbleText:     { fontSize: 15 },
   bubbleTime:     { fontSize: 11, color: '#94a3b8', marginTop: 3, marginHorizontal: 4 },
   bubbleTimeMe:   { textAlign: 'right' },
-  inputRow:       { flexDirection: 'row', padding: 12, gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e0f2fe' },
-  input:          { flex: 1, backgroundColor: '#f0f9ff', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, borderWidth: 1.5, borderColor: '#c7d2fe', maxHeight: 100, color: '#1e293b' },
+  inputRow:       { flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 1 },
+  input:          { flex: 1, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, borderWidth: 1.5, maxHeight: 100 },
   sendBtn:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3 },
   sendBtnDisabled:{ opacity: 0.35 },
   sendText:       { color: '#fff', fontSize: 20, fontWeight: '800' },

@@ -5,7 +5,7 @@ import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 
 export default function FriendsScreen({ navigation }) {
-  const { pageBg, accent } = useTheme();
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
   const [friends, setFriends]         = useState([]);
   const [requests, setRequests]       = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -49,9 +49,10 @@ export default function FriendsScreen({ navigation }) {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: accent }]}>Add a Friend 🔍</Text>
               <View style={styles.row}>
-                <TextInput style={styles.input} placeholder="Search by username"
-                  value={username} onChangeText={setUsername} autoCapitalize="none"
-                  placeholderTextColor="#94a3b8" />
+                <TextInput
+                  style={[styles.input, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+                  placeholder="Search by username" value={username} onChangeText={setUsername}
+                  autoCapitalize="none" placeholderTextColor={textSecondary} />
                 <TouchableOpacity style={[styles.addBtn, { backgroundColor: accent }]} onPress={sendRequest}>
                   <Text style={styles.addBtnText}>Add</Text>
                 </TouchableOpacity>
@@ -62,8 +63,8 @@ export default function FriendsScreen({ navigation }) {
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: accent }]}>Pending Requests 📬</Text>
                 {requests.map(r => (
-                  <View key={r.id} style={styles.requestCard}>
-                    <Text style={styles.requestName}>👤 {r.sender.username}</Text>
+                  <View key={r.id} style={[styles.requestCard, { backgroundColor: cardBg, borderColor: border }]}>
+                    <Text style={[styles.requestName, { color: textPrimary }]}>👤 {r.sender.username}</Text>
                     <TouchableOpacity onPress={() => acceptRequest(r.id)} style={[styles.acceptBtn, { backgroundColor: accent }]}>
                       <Text style={styles.acceptText}>✓ Accept</Text>
                     </TouchableOpacity>
@@ -79,9 +80,10 @@ export default function FriendsScreen({ navigation }) {
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: accent }]}>Leaderboard 🏆</Text>
                 {leaderboard.map((user, i) => (
-                  <View key={user.id} style={[styles.leaderCard, user.isMe && { backgroundColor: '#eff6ff', borderColor: '#a5b4fc' }]}>
+                  <View key={user.id} style={[styles.leaderCard, { backgroundColor: cardBg, borderColor: border },
+                    user.isMe && { borderColor: accent }]}>
                     <Text style={styles.medal}>{medals[i] || `#${i + 1}`}</Text>
-                    <Text style={styles.leaderName}>{user.isMe ? 'You' : user.username}</Text>
+                    <Text style={[styles.leaderName, { color: textPrimary }]}>{user.isMe ? 'You' : user.username}</Text>
                     <Text style={[styles.leaderCount, { color: accent }]}>🔥 {user.streak} day streak</Text>
                   </View>
                 ))}
@@ -91,10 +93,10 @@ export default function FriendsScreen({ navigation }) {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: accent }]}>Your Friends</Text>
               {friends.length === 0
-                ? <Text style={styles.empty}>No friends yet — add some! 👆</Text>
+                ? <Text style={[styles.empty, { color: textSecondary }]}>No friends yet — add some! 👆</Text>
                 : friends.map(item => (
-                  <View key={item.id} style={styles.friendCard}>
-                    <Text style={styles.friendName}>👤 {item.username}</Text>
+                  <View key={item.id} style={[styles.friendCard, { backgroundColor: cardBg, borderColor: border }]}>
+                    <Text style={[styles.friendName, { color: textPrimary }]}>👤 {item.username}</Text>
                     <TouchableOpacity style={styles.msgBtn}
                       onPress={() => navigation.navigate('Conversation', { friend: item })}>
                       <Text style={styles.msgBtnText}>💬</Text>
@@ -120,22 +122,22 @@ const styles = StyleSheet.create({
   section:      { padding: 16, paddingBottom: 0 },
   sectionTitle: { fontWeight: '800', fontSize: 15, marginBottom: 10 },
   row:          { flexDirection: 'row', gap: 8 },
-  input:        { flex: 1, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#c7d2fe', borderRadius: 14, padding: 12, fontSize: 14, color: '#1e293b' },
+  input:        { flex: 1, borderWidth: 1.5, borderRadius: 14, padding: 12, fontSize: 14 },
   addBtn:       { borderRadius: 14, paddingHorizontal: 18, justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3 },
   addBtnText:   { color: '#fff', fontWeight: '700' },
-  requestCard:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1.5, borderColor: '#bae6fd', gap: 10 },
-  requestName:  { flex: 1, fontWeight: '600', color: '#1e293b' },
+  requestCard:  { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1.5, gap: 10 },
+  requestName:  { flex: 1, fontWeight: '600' },
   acceptBtn:    { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
   acceptText:   { color: '#fff', fontWeight: '700', fontSize: 13 },
   rejectText:   { color: '#f87171', fontSize: 18, fontWeight: '700' },
-  leaderCard:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1.5, borderColor: '#bae6fd', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  leaderCard:   { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1.5, shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   medal:        { fontSize: 24, marginRight: 12 },
-  leaderName:   { flex: 1, fontWeight: '700', fontSize: 15, color: '#1e293b' },
+  leaderName:   { flex: 1, fontWeight: '700', fontSize: 15 },
   leaderCount:  { fontWeight: '700' },
-  friendCard:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 8, borderWidth: 1.5, borderColor: '#bae6fd' },
-  friendName:   { flex: 1, fontSize: 15, fontWeight: '600', color: '#1e293b' },
+  friendCard:   { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 16, marginBottom: 8, borderWidth: 1.5 },
+  friendName:   { flex: 1, fontSize: 15, fontWeight: '600' },
   msgBtn:       { paddingHorizontal: 10 },
   msgBtnText:   { fontSize: 18 },
   compareText:  { fontWeight: '700' },
-  empty:        { textAlign: 'center', color: '#94a3b8', marginTop: 20, fontSize: 14 },
+  empty:        { textAlign: 'center', marginTop: 20, fontSize: 14 },
 });

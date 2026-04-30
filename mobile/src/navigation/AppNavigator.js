@@ -14,10 +14,10 @@ import FriendsScreen      from '../screens/FriendsScreen';
 import CompareScreen      from '../screens/CompareScreen';
 import CommentsScreen     from '../screens/CommentsScreen';
 import ProfileScreen      from '../screens/ProfileScreen';
-import FeedScreen         from '../screens/FeedScreen';
 import DiscoverScreen     from '../screens/DiscoverScreen';
 import MessagesScreen     from '../screens/MessagesScreen';
-import ConversationScreen from '../screens/ConversationScreen';
+import ConversationScreen  from '../screens/ConversationScreen';
+import UserProfileScreen  from '../screens/UserProfileScreen';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -41,8 +41,7 @@ function MainTabs({ onLogout }) {
       <Tab.Screen name="Home"     options={{ tabBarIcon: icon('📋') }}>
         {props => <HomeScreen {...props} onLogout={onLogout} />}
       </Tab.Screen>
-      <Tab.Screen name="Explore"  component={DiscoverScreen}     options={{ tabBarIcon: icon('🔍') }} />
-      <Tab.Screen name="Feed"     component={FeedScreen}         options={{ tabBarIcon: icon('📡') }} />
+      <Tab.Screen name="Feed"     component={DiscoverScreen}     options={{ tabBarIcon: icon('📡') }} />
       <Tab.Screen name="Friends"  component={FriendsScreen}      options={{ tabBarIcon: icon('👥') }} />
       <Tab.Screen name="Messages" component={MessagesScreen}     options={{ tabBarIcon: icon('💬') }} />
       <Tab.Screen name="Profile"  component={ProfileScreen}      options={{ tabBarIcon: icon('🃏') }} />
@@ -59,7 +58,8 @@ function MainStack({ onLogout }) {
       <Stack.Screen name="LogActivity"  component={LogActivityScreen} />
       <Stack.Screen name="Compare"      component={CompareScreen} />
       <Stack.Screen name="Comments"     component={CommentsScreen} />
-      <Stack.Screen name="Conversation" component={ConversationScreen} />
+      <Stack.Screen name="Conversation"  component={ConversationScreen} />
+      <Stack.Screen name="UserProfile"   component={UserProfileScreen} />
     </Stack.Navigator>
   );
 }

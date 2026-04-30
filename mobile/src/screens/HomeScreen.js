@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { removeToken } from '../auth';
 import { useTheme } from '../context/ThemeContext';
+import ImageViewer from '../components/ImageViewer';
 
 function todayDate() { return new Date().toISOString().split('T')[0]; }
 
@@ -26,11 +27,12 @@ const REFLECTIONS = [
 ];
 
 export default function HomeScreen({ navigation, onLogout }) {
-  const { pageBg, accent } = useTheme();
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg, isDark } = useTheme();
   const [activities, setActivities] = useState([]);
   const [streak, setStreak]         = useState(0);
   const [goals, setGoals]           = useState([]);
   const [goalText, setGoalText]     = useState('');
+  const [viewerUri, setViewerUri]   = useState(null);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   useFocusEffect(useCallback(() => {
@@ -112,44 +114,47 @@ export default function HomeScreen({ navigation, onLogout }) {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <>
-            <View style={[styles.statsRow, { borderBottomColor: '#bae6fd' }]}>
-              <View style={styles.statCard}>
+            <View style={[styles.statsRow, { backgroundColor: statsBg, borderBottomColor: border }]}>
+              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <Text style={styles.statEmoji}>🔥</Text>
                 <Text style={[styles.statNum, { color: accent }]}>{streak}</Text>
-                <Text style={styles.statLabel}>day streak</Text>
+                <Text style={[styles.statLabel, { color: textSecondary }]}>day streak</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <Text style={styles.statEmoji}>📋</Text>
                 <Text style={[styles.statNum, { color: accent }]}>{activities.length}</Text>
-                <Text style={styles.statLabel}>logged</Text>
+                <Text style={[styles.statLabel, { color: textSecondary }]}>logged</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <Text style={styles.statEmoji}>✅</Text>
                 <Text style={[styles.statNum, { color: accent }]}>{doneCount}/{goals.length}</Text>
-                <Text style={styles.statLabel}>goals</Text>
+                <Text style={[styles.statLabel, { color: textSecondary }]}>goals</Text>
               </View>
             </View>
 
-            <View style={styles.reflectionBox}>
+            <View style={[styles.reflectionBox, { backgroundColor: isDark ? '#1a2744' : '#eff6ff', borderColor: border }]}>
               <Text style={[styles.reflectionText, { color: accent }]}>{reflection}</Text>
             </View>
 
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: accent }]}>Today's Goals 🎯</Text>
               {goals.map(g => (
-                <View key={g.id} style={styles.goalRow}>
+                <View key={g.id} style={[styles.goalRow, { backgroundColor: cardBg, borderColor: border }]}>
                   <TouchableOpacity onPress={() => toggleGoal(g.id)} style={styles.checkbox}>
                     <Text style={styles.checkboxText}>{g.done ? '✅' : '⬜'}</Text>
                   </TouchableOpacity>
-                  <Text style={[styles.goalText, g.done && styles.goalTextDone]}>{g.text}</Text>
+                  <Text style={[styles.goalText, { color: textPrimary }, g.done && styles.goalTextDone]}>{g.text}</Text>
                   <TouchableOpacity onPress={() => deleteGoal(g.id)}>
                     <Text style={styles.goalDelete}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
               <View style={styles.goalInputRow}>
-                <TextInput style={styles.goalInput} placeholder="Add a goal for today..."
-                  value={goalText} onChangeText={setGoalText} placeholderTextColor="#94a3b8"
+                <TextInput
+                  style={[styles.goalInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+                  placeholder="Add a goal for today..."
+                  value={goalText} onChangeText={setGoalText}
+                  placeholderTextColor={textSecondary}
                   onSubmitEditing={addGoal} returnKeyType="done" />
                 <TouchableOpacity style={[styles.goalAddBtn, { backgroundColor: accent }]} onPress={addGoal}>
                   <Text style={styles.goalAddText}>+</Text>
@@ -163,20 +168,22 @@ export default function HomeScreen({ navigation, onLogout }) {
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>🫙</Text>
-            <Text style={styles.emptyText}>No activities yet.</Text>
-            <Text style={styles.emptySubText}>Tap below to log your first one!</Text>
+            <Text style={[styles.emptyText, { color: textPrimary }]}>No activities yet.</Text>
+            <Text style={[styles.emptySubText, { color: textSecondary }]}>Tap below to log your first one!</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             {item.imageBase64 ? (
-              <Image source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }} style={styles.cardImage} resizeMode="cover" />
+              <TouchableOpacity onPress={() => setViewerUri(`data:image/jpeg;base64,${item.imageBase64}`)}>
+                <Image source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }} style={styles.cardImage} resizeMode="cover" />
+              </TouchableOpacity>
             ) : null}
             <View style={styles.cardBody}>
               <View style={styles.cardLeft}>
-                <Text style={styles.type}>{item.type}</Text>
+                <Text style={[styles.type, { color: textPrimary }]}>{item.type}</Text>
                 {item.duration ? <Text style={[styles.meta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
-                {item.notes    ? <Text style={styles.notes}>📝 {item.notes}</Text> : null}
+                {item.notes    ? <Text style={[styles.notes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
               </View>
               <TouchableOpacity onPress={() => confirmDelete(item.id)}>
                 <Text style={styles.delete}>✕</Text>
@@ -184,11 +191,11 @@ export default function HomeScreen({ navigation, onLogout }) {
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item.id)}>
-                <Text style={styles.actionText}>{item.isLiked ? '❤️' : '🤍'} {item.likeCount}</Text>
+                <Text style={[styles.actionText, { color: textSecondary }]}>{item.isLiked ? '❤️' : '🤍'} {item.likeCount}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionBtn}
                 onPress={() => navigation.navigate('Comments', { activityId: item.id, activityType: item.type })}>
-                <Text style={styles.actionText}>💬 {item.commentCount}</Text>
+                <Text style={[styles.actionText, { color: textSecondary }]}>💬 {item.commentCount}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -198,6 +205,8 @@ export default function HomeScreen({ navigation, onLogout }) {
       <TouchableOpacity style={[styles.fab, { backgroundColor: accent }]} onPress={() => navigation.navigate('LogActivity')}>
         <Text style={styles.fabText}>+ Log Activity</Text>
       </TouchableOpacity>
+
+      <ImageViewer uri={viewerUri} visible={!!viewerUri} onClose={() => setViewerUri(null)} />
     </KeyboardAvoidingView>
   );
 }
@@ -211,41 +220,41 @@ const styles = StyleSheet.create({
   logoutBtn:     { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 4 },
   logoutText:    { color: '#fff', fontSize: 13, fontWeight: '600' },
   list:          { paddingBottom: 100 },
-  statsRow:      { flexDirection: 'row', padding: 12, gap: 8, backgroundColor: '#e0f2fe', borderBottomWidth: 1 },
-  statCard:      { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#bae6fd', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  statsRow:      { flexDirection: 'row', padding: 12, gap: 8, borderBottomWidth: 1 },
+  statCard:      { flex: 1, borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5, shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   statEmoji:     { fontSize: 18 },
   statNum:       { fontSize: 18, fontWeight: '900' },
-  statLabel:     { fontSize: 10, color: '#64748b', fontWeight: '600' },
-  reflectionBox: { margin: 12, marginBottom: 4, backgroundColor: '#eff6ff', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#c7d2fe' },
+  statLabel:     { fontSize: 10, fontWeight: '600' },
+  reflectionBox: { margin: 12, marginBottom: 4, borderRadius: 14, padding: 14, borderWidth: 1.5 },
   reflectionText:{ fontWeight: '600', fontSize: 13, fontStyle: 'italic', lineHeight: 20 },
   section:       { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
   sectionTitle:  { fontWeight: '800', fontSize: 15, marginBottom: 10 },
   sectionTitle2: { fontWeight: '800', fontSize: 15, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
-  goalRow:       { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 6, borderWidth: 1.5, borderColor: '#bae6fd', gap: 10 },
+  goalRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 12, marginBottom: 6, borderWidth: 1.5, gap: 10 },
   checkbox:      { width: 28 },
   checkboxText:  { fontSize: 20 },
-  goalText:      { flex: 1, fontSize: 14, color: '#1e293b', fontWeight: '500' },
+  goalText:      { flex: 1, fontSize: 14, fontWeight: '500' },
   goalTextDone:  { textDecorationLine: 'line-through', color: '#94a3b8' },
   goalDelete:    { color: '#94a3b8', fontSize: 16, paddingLeft: 4 },
   goalInputRow:  { flexDirection: 'row', gap: 8, marginTop: 4 },
-  goalInput:     { flex: 1, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#c7d2fe', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#1e293b' },
+  goalInput:     { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
   goalAddBtn:    { borderRadius: 12, width: 44, justifyContent: 'center', alignItems: 'center' },
   goalAddText:   { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26 },
-  card:          { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#bae6fd', overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  card:          { borderRadius: 16, marginHorizontal: 12, marginBottom: 12, borderWidth: 1.5, overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
   cardImage:     { width: '100%', height: 180 },
   cardBody:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingBottom: 8 },
   cardLeft:      { flex: 1 },
-  type:          { fontSize: 16, fontWeight: '700', color: '#1e293b' },
+  type:          { fontSize: 16, fontWeight: '700' },
   meta:          { fontSize: 13, marginTop: 2 },
-  notes:         { color: '#64748b', fontSize: 13, marginTop: 2 },
+  notes:         { fontSize: 13, marginTop: 2 },
   delete:        { color: '#94a3b8', fontSize: 18, paddingLeft: 12 },
   cardActions:   { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 12, gap: 16 },
   actionBtn:     { flexDirection: 'row', alignItems: 'center' },
-  actionText:    { fontSize: 14, color: '#64748b', fontWeight: '600' },
+  actionText:    { fontSize: 14, fontWeight: '600' },
   emptyBox:      { alignItems: 'center', marginTop: 24, paddingHorizontal: 12 },
   emptyEmoji:    { fontSize: 48, marginBottom: 10 },
-  emptyText:     { fontSize: 17, fontWeight: '700', color: '#334155' },
-  emptySubText:  { fontSize: 14, color: '#94a3b8', marginTop: 4 },
+  emptyText:     { fontSize: 17, fontWeight: '700' },
+  emptySubText:  { fontSize: 14, marginTop: 4 },
   fab:           { position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 },
   fabText:       { color: '#fff', fontWeight: '800', fontSize: 16 },
 });

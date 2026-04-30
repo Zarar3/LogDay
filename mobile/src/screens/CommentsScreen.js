@@ -15,7 +15,7 @@ function timeAgo(dateStr) {
 
 export default function CommentsScreen({ route, navigation }) {
   const { activityId, activityType } = route.params;
-  const { pageBg, accent } = useTheme();
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
   const [comments, setComments] = useState([]);
   const [text, setText]         = useState('');
   const listRef = useRef(null);
@@ -52,25 +52,29 @@ export default function CommentsScreen({ route, navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>💬</Text>
-            <Text style={styles.emptyText}>No comments yet</Text>
-            <Text style={styles.emptySub}>Be the first to say something! 👋</Text>
+            <Text style={[styles.emptyText, { color: textPrimary }]}>No comments yet</Text>
+            <Text style={[styles.emptySub, { color: textSecondary }]}>Be the first to say something! 👋</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.commentCard}>
+          <View style={[styles.commentCard, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.commentTop}>
-              <Text style={styles.commentUser}>👤 {item.user.username}</Text>
-              <Text style={styles.commentTime}>{timeAgo(item.createdAt)}</Text>
+              <Text style={[styles.commentUser, { color: textPrimary }]}>👤 {item.user.username}</Text>
+              <Text style={[styles.commentTime, { color: textSecondary }]}>{timeAgo(item.createdAt)}</Text>
             </View>
-            <Text style={styles.commentText}>{item.text}</Text>
+            <Text style={[styles.commentText, { color: textPrimary }]}>{item.text}</Text>
           </View>
         )}
       />
 
-      <View style={styles.inputRow}>
-        <TextInput style={styles.input} placeholder="Write a comment..." value={text}
-          onChangeText={setText} placeholderTextColor="#94a3b8" multiline maxLength={300} />
-        <TouchableOpacity style={[styles.sendBtn, { backgroundColor: accent }, !text.trim() && styles.sendBtnDisabled]} onPress={sendComment}>
+      <View style={[styles.inputRow, { backgroundColor: cardBg, borderTopColor: border }]}>
+        <TextInput
+          style={[styles.input, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+          placeholder="Write a comment..." value={text}
+          onChangeText={setText} placeholderTextColor={textSecondary} multiline maxLength={300} />
+        <TouchableOpacity
+          style={[styles.sendBtn, { backgroundColor: accent }, !text.trim() && styles.sendBtnDisabled]}
+          onPress={sendComment}>
           <Text style={styles.sendText}>Send</Text>
         </TouchableOpacity>
       </View>
@@ -85,17 +89,17 @@ const styles = StyleSheet.create({
   heading:      { fontSize: 22, fontWeight: '800', color: '#fff' },
   sub:          { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 },
   list:         { padding: 16, paddingBottom: 16 },
-  commentCard:  { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: '#bae6fd', shadowColor: '#0ea5e9', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  commentCard:  { borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1.5, shadowColor: '#0ea5e9', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   commentTop:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  commentUser:  { fontWeight: '700', color: '#1e293b', fontSize: 13 },
-  commentTime:  { color: '#94a3b8', fontSize: 12 },
-  commentText:  { color: '#334155', fontSize: 14, lineHeight: 20 },
+  commentUser:  { fontWeight: '700', fontSize: 13 },
+  commentTime:  { fontSize: 12 },
+  commentText:  { fontSize: 14, lineHeight: 20 },
   emptyBox:     { alignItems: 'center', marginTop: 60 },
   emptyEmoji:   { fontSize: 48, marginBottom: 12 },
-  emptyText:    { fontSize: 17, fontWeight: '700', color: '#334155' },
-  emptySub:     { color: '#94a3b8', marginTop: 4 },
-  inputRow:     { flexDirection: 'row', padding: 12, gap: 8, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e0f2fe' },
-  input:        { flex: 1, backgroundColor: '#f0f9ff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1.5, borderColor: '#c7d2fe', maxHeight: 100, color: '#1e293b' },
+  emptyText:    { fontSize: 17, fontWeight: '700' },
+  emptySub:     { marginTop: 4 },
+  inputRow:     { flexDirection: 'row', padding: 12, gap: 8, borderTopWidth: 1 },
+  input:        { flex: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, borderWidth: 1.5, maxHeight: 100 },
   sendBtn:      { borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
   sendText:     { color: '#fff', fontWeight: '700', fontSize: 14 },
