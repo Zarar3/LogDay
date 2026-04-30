@@ -136,37 +136,62 @@ router.get('/:id/comments', auth, async (req, res) => {
   const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
   if (!activity) return res.status(404).json({ error: 'Activity not found' });
 
-  if (activity.userId !== req.user.id) {
-    const friendship = await friendshipCheck(req.user.id, activity.userId);
-    if (!friendship) return res.status(403).json({ error: 'Not authorized' });
-  }
+  const fmtComment = (c) => ({
+    id: c.id, activityId: c.activityId, userId: c.userId, text: c.text,
+    parentId: c.parentId, createdAt: c.createdAt, user: c.user,
+    likeCount: c._count.likes,
+    isLiked:   c.likes.length > 0,
+  });
 
-  const comments = await prisma.comment.findMany({
-    where: { activityId: req.params.id },
-    include: { user: { select: { id: true, username: true } } },
+  const all = await prisma.comment.findMany({
+    where:   { activityId: req.params.id },
+    include: {
+      user:   { select: { id: true, username: true } },
+      _count: { select: { likes: true } },
+      likes:  { where: { userId: req.user.id }, select: { id: true } },
+    },
     orderBy: { createdAt: 'asc' },
   });
-  res.json(comments);
+
+  const top     = all.filter(c => !c.parentId).map(fmtComment);
+  const replies = all.filter(c =>  c.parentId).map(fmtComment);
+  top.forEach(c => { c.replies = replies.filter(r => r.parentId === c.id); });
+
+  res.json(top);
 });
 
 // POST /api/activities/:id/comments
 router.post('/:id/comments', auth, async (req, res) => {
-  const { text } = req.body;
+  const { text, parentId } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'Comment text required' });
 
   const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
   if (!activity) return res.status(404).json({ error: 'Activity not found' });
 
-  if (activity.userId !== req.user.id) {
-    const friendship = await friendshipCheck(req.user.id, activity.userId);
-    if (!friendship) return res.status(403).json({ error: 'Not authorized' });
-  }
-
   const comment = await prisma.comment.create({
-    data: { activityId: req.params.id, userId: req.user.id, text: text.trim() },
+    data: {
+      activityId: req.params.id, userId: req.user.id,
+      text: text.trim(), parentId: parentId || null,
+    },
     include: { user: { select: { id: true, username: true } } },
   });
-  res.status(201).json(comment);
+  res.status(201).json({ ...comment, likeCount: 0, isLiked: false, replies: [] });
+});
+
+// POST /api/activities/:id/comments/:commentId/like
+router.post('/:id/comments/:commentId/like', auth, async (req, res) => {
+  const existing = await prisma.commentLike.findUnique({
+    where: { commentId_userId: { commentId: req.params.commentId, userId: req.user.id } },
+  });
+  if (existing) {
+    await prisma.commentLike.delete({ where: { id: existing.id } });
+    res.json({ liked: false });
+  } else {
+    await prisma.commentLike.create({
+      data: { commentId: req.params.commentId, userId: req.user.id },
+    });
+    res.json({ liked: true });
+  }
 });
 
 module.exports = router;

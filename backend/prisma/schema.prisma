@@ -24,6 +24,7 @@ model User {
   friendsB         Friendship[]    @relation("UserB")
   comments         Comment[]
   likes            ActivityLike[]
+  commentLikes     CommentLike[]
   goals            Goal[]
   sentMessages     Message[]       @relation("MessageSender")
   receivedMessages Message[]       @relation("MessageReceiver")
@@ -49,10 +50,26 @@ model Comment {
   activityId String
   userId     String
   text       String
+  parentId   String?
   createdAt  DateTime @default(now())
 
-  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity Activity      @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]     @relation("CommentReplies")
+  likes    CommentLike[]
+}
+
+model CommentLike {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
 }
 
 model ActivityLike {
