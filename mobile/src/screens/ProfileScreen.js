@@ -183,6 +183,69 @@ const TAB_BG_COLORS = [
 const DEFAULT_PRIMARY   = '#6366f1';
 const DEFAULT_SECONDARY = '#fffbeb';
 
+// ─── Streak calendar ─────────────────────────────────────────────────────────
+
+function buildGrid(weeks) {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const cells = [];
+  for (let i = weeks * 7 + dayOfWeek; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    cells.push(d.toISOString().split('T')[0]);
+  }
+  return cells;
+}
+
+function CalendarGrid({ activeDates = [], weeks = 12 }) {
+  const { accent, border } = useTheme();
+  const activeSet = new Set(activeDates);
+  const cells     = buildGrid(weeks);
+  const CELL = 13, GAP = 3;
+
+  const columns = [];
+  for (let i = 0; i < cells.length; i += 7) columns.push(cells.slice(i, i + 7));
+
+  const DAY_LABELS = ['S','M','T','W','T','F','S'];
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View>
+        <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+          {columns.map((col, ci) => {
+            const d    = new Date(col[0] + 'T00:00:00');
+            const show = ci === 0 || d.getDate() <= 7;
+            return (
+              <Text key={ci} style={{ width: CELL + GAP, fontSize: 7, color: '#94a3b8', textAlign: 'left' }}>
+                {show ? d.toLocaleString('default', { month: 'short' }) : ''}
+              </Text>
+            );
+          })}
+        </View>
+        <View style={{ flexDirection: 'row', gap: GAP }}>
+          {columns.map((col, ci) => (
+            <View key={ci} style={{ flexDirection: 'column', gap: GAP }}>
+              {col.map(date => (
+                <View key={date} style={{
+                  width: CELL, height: CELL, borderRadius: 3,
+                  backgroundColor: activeSet.has(date) ? accent : 'transparent',
+                  borderWidth: activeSet.has(date) ? 0 : 1,
+                  borderColor: border,
+                }} />
+              ))}
+            </View>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', marginTop: 6 }}>
+          {DAY_LABELS.map((l, i) => (
+            <Text key={i} style={{ width: CELL + GAP, fontSize: 7, color: '#94a3b8', fontWeight: '700' }}>{l}</Text>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
@@ -193,9 +256,10 @@ export default function ProfileScreen() {
   const [topActivities, setTop]   = useState([]);
   const [totalCount, setTotal]    = useState(0);
   const [friendCount, setFriends] = useState(0);
-  const [primary, setPrimary]     = useState(DEFAULT_PRIMARY);
-  const [secondary, setSecondary] = useState(DEFAULT_SECONDARY);
-  const [isPublic, setIsPublic]   = useState(true);
+  const [primary, setPrimary]         = useState(DEFAULT_PRIMARY);
+  const [secondary, setSecondary]     = useState(DEFAULT_SECONDARY);
+  const [isPublic, setIsPublic]       = useState(true);
+  const [calendarDates, setCalendar]  = useState([]);
 
   const saveTimer = useRef({});
 
@@ -203,11 +267,12 @@ export default function ProfileScreen() {
 
   async function loadAll() {
     try {
-      const [meRes, streakRes, actsRes, friendsRes] = await Promise.all([
+      const [meRes, streakRes, actsRes, friendsRes, calRes] = await Promise.all([
         api.get('/auth/me'),
         api.get('/activities/streak'),
         api.get('/activities'),
         api.get('/friends'),
+        api.get('/activities/calendar?weeks=12'),
       ]);
       const me = meRes.data;
       setUser(me);
@@ -216,6 +281,7 @@ export default function ProfileScreen() {
       if (me.cardColor)          setPrimary(me.cardColor);
       if (me.cardSecondaryColor) setSecondary(me.cardSecondaryColor);
       setIsPublic(me.isPublic !== false);
+      setCalendar(calRes.data.activeDates);
       const allActs = actsRes.data;
       setTotal(allActs.length);
       const counts = {};
@@ -342,6 +408,12 @@ export default function ProfileScreen() {
         <View style={[styles.cardFooter, { backgroundColor: primary }]}>
           <Text style={styles.cardFooterText}>LogDay  •  {user.email}</Text>
         </View>
+      </View>
+
+      {/* Activity calendar */}
+      <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
+        <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 16 }]}>Activity History</Text>
+        <CalendarGrid activeDates={calendarDates} weeks={12} />
       </View>
 
       {/* Card color pickers */}

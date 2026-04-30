@@ -83,6 +83,22 @@ router.post('/', auth, async (req, res) => {
   res.status(201).json({ ...activity, isPR, likeCount: 0, commentCount: 0, isLiked: false });
 });
 
+// GET /api/activities/calendar?weeks=12
+router.get('/calendar', auth, async (req, res) => {
+  const weeks = Math.min(parseInt(req.query.weeks) || 12, 52);
+  const since = new Date();
+  since.setDate(since.getDate() - weeks * 7);
+  const sinceStr = since.toISOString().split('T')[0];
+
+  const activities = await prisma.activity.findMany({
+    where: { userId: req.user.id, date: { gte: sinceStr } },
+    select: { date: true },
+  });
+
+  const activeDates = [...new Set(activities.map(a => a.date))];
+  res.json({ activeDates, since: sinceStr });
+});
+
 // GET /api/activities/prs  — personal records for the authed user
 router.get('/prs', auth, async (req, res) => {
   const records = await prisma.personalRecord.findMany({
