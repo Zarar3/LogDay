@@ -6,6 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 
@@ -298,6 +299,7 @@ export default function ProfileScreen() {
   const [secondary, setSecondary]     = useState(DEFAULT_SECONDARY);
   const [isPublic, setIsPublic]       = useState(true);
   const [calendarDates, setCalendar]  = useState([]);
+  const [badges, setBadges]           = useState([]);
 
   const saveTimer = useRef({});
   const cardRef   = useRef(null);
@@ -306,12 +308,13 @@ export default function ProfileScreen() {
 
   async function loadAll() {
     try {
-      const [meRes, streakRes, actsRes, friendsRes, calRes] = await Promise.all([
+      const [meRes, streakRes, actsRes, friendsRes, calRes, badgesRes] = await Promise.all([
         api.get('/auth/me'),
         api.get('/activities/streak'),
         api.get('/activities'),
         api.get('/friends'),
         api.get('/activities/calendar?weeks=12'),
+        api.get('/auth/badges'),
       ]);
       const me = meRes.data;
       setUser(me);
@@ -321,6 +324,8 @@ export default function ProfileScreen() {
       if (me.cardSecondaryColor) setSecondary(me.cardSecondaryColor);
       setIsPublic(me.isPublic !== false);
       setCalendar(calRes.data.activeDates);
+      setBadges(badgesRes.data);
+      checkNewBadges(badgesRes.data);
       const allActs = actsRes.data;
       setTotal(allActs.length);
       const counts = {};
@@ -363,6 +368,19 @@ export default function ProfileScreen() {
     saveTimer.current.secondary = setTimeout(() => {
       api.patch('/auth/profile', { cardSecondaryColor: color }).catch(() => {});
     }, 600);
+  }
+
+  async function checkNewBadges(newBadges) {
+    try {
+      const earned = newBadges.filter(b => b.earned).map(b => b.id);
+      const prev   = JSON.parse(await AsyncStorage.getItem('@logday_earned_badges') || '[]');
+      const fresh  = earned.filter(id => !prev.includes(id));
+      if (fresh.length > 0) {
+        const badge = newBadges.find(b => b.id === fresh[0]);
+        Alert.alert(`${badge.emoji} Achievement Unlocked!`, `${badge.label}\n${badge.desc}`);
+      }
+      await AsyncStorage.setItem('@logday_earned_badges', JSON.stringify(earned));
+    } catch {}
   }
 
   async function shareCard() {
@@ -438,6 +456,18 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {badges.filter(b => b.earned).length > 0 && (
+          <View style={[trophyStyles.shelf, { borderTopColor: primary + '33', backgroundColor: secondary }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={trophyStyles.row}>
+              {badges.filter(b => b.earned).map(b => (
+                <View key={b.id} style={[trophyStyles.item, { backgroundColor: primary + '18' }]}>
+                  <Text style={trophyStyles.emoji}>{b.emoji}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <View style={[styles.divider, { backgroundColor: primary }]} />
 
@@ -536,6 +566,31 @@ export default function ProfileScreen() {
         <ColorPicker value={tabBg} onChange={v => updateTheme({ tabBg: v })} />
       </View>
 
+      {/* Achievements */}
+      {badges.length > 0 && (
+        <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
+          <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 16 }]}>
+            Achievements  {badges.filter(b => b.earned).length}/{badges.length}
+          </Text>
+          <View style={achieveStyles.grid}>
+            {badges.map(b => (
+              <View key={b.id} style={[
+                achieveStyles.badge,
+                b.earned
+                  ? { backgroundColor: appAccent + '18', borderColor: appAccent }
+                  : { backgroundColor: 'transparent', borderColor: border, opacity: 0.4 },
+              ]}>
+                <Text style={achieveStyles.badgeEmoji}>{b.emoji}</Text>
+                <Text style={[achieveStyles.badgeLabel, { color: b.earned ? textPrimary : textSecondary }]}>
+                  {b.label}
+                </Text>
+                <Text style={[achieveStyles.badgeDesc, { color: textSecondary }]}>{b.desc}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Privacy */}
       <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
         <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 14 }]}>Privacy</Text>
@@ -629,4 +684,19 @@ const shareStyles = StyleSheet.create({
              shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
              shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   btnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+});
+
+const trophyStyles = StyleSheet.create({
+  shelf: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
+  row:   { gap: 8, paddingRight: 4 },
+  item:  { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
+  emoji: { fontSize: 20 },
+});
+
+const achieveStyles = StyleSheet.create({
+  grid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  badge:      { width: '47%', borderRadius: 14, borderWidth: 1.5, padding: 12, alignItems: 'center' },
+  badgeEmoji: { fontSize: 28, marginBottom: 6 },
+  badgeLabel: { fontSize: 13, fontWeight: '800', textAlign: 'center', marginBottom: 3 },
+  badgeDesc:  { fontSize: 10, textAlign: 'center', lineHeight: 14 },
 });

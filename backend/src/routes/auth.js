@@ -2,6 +2,7 @@ const router  = require('express').Router();
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const prisma  = require('../prisma');
+const { computeBadges } = require('../utils/badges');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -64,6 +65,17 @@ router.patch('/profile', auth, async (req, res) => {
     select: { id: true, email: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true, isPublic: true },
   });
   res.json(user);
+});
+
+// GET /api/auth/badges
+router.get('/badges', auth, async (req, res) => {
+  try {
+    const badges = await computeBadges(req.user.id, prisma);
+    res.json(badges);
+  } catch (e) {
+    console.error('Badges error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/auth/user/:id  — public profile
