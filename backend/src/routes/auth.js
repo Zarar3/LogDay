@@ -65,4 +65,14 @@ router.patch('/profile', auth, async (req, res) => {
   res.json(user);
 });
 
+// GET /api/auth/user/:id  — public profile
+router.get('/user/:id', auth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true },
+  });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json(user);
+});
+
 module.exports = router;

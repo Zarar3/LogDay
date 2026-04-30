@@ -158,4 +158,63 @@ router.get('/feed', auth, async (req, res) => {
   res.json(result);
 });
 
+// GET /api/friends/unified-feed?limit=20&offset=0
+// offset is the public-post offset; friend posts are prepended on the first page (offset=0)
+router.get('/unified-feed', auth, async (req, res) => {
+  const limit        = Math.min(parseInt(req.query.limit) || 20, 50);
+  const publicOffset = parseInt(req.query.offset) || 0;
+
+  const friendships = await prisma.friendship.findMany({
+    where: { OR: [{ userAId: req.user.id }, { userBId: req.user.id }] },
+    select: { userAId: true, userBId: true },
+  });
+  const friendIds = friendships.map(f =>
+    f.userAId === req.user.id ? f.userBId : f.userAId
+  );
+
+  const include = {
+    user:   { select: { id: true, username: true } },
+    _count: { select: { likes: true, comments: true } },
+    likes:  { where: { userId: req.user.id }, select: { id: true } },
+  };
+
+  const fmt = (a) => ({
+    id:          a.id,
+    userId:      a.userId,
+    username:    a.user.username,
+    type:        a.type,
+    duration:    a.duration,
+    notes:       a.notes,
+    imageBase64: a.imageBase64,
+    date:        a.date,
+    loggedAt:    a.loggedAt,
+    likeCount:   a._count.likes,
+    commentCount:a._count.comments,
+    isLiked:     a.likes.length > 0,
+  });
+
+  let friendPosts = [];
+  if (publicOffset === 0 && friendIds.length > 0) {
+    friendPosts = await prisma.activity.findMany({
+      where:   { userId: { in: friendIds } },
+      orderBy: { loggedAt: 'desc' },
+      take:    5,
+      include,
+    });
+  }
+
+  const publicPosts = await prisma.activity.findMany({
+    where:   { userId: { notIn: [req.user.id, ...friendIds] } },
+    orderBy: { loggedAt: 'desc' },
+    take:    limit,
+    skip:    publicOffset,
+    include,
+  });
+
+  res.json({
+    posts:   [...friendPosts.map(fmt), ...publicPosts.map(fmt)],
+    hasMore: publicPosts.length === limit,
+  });
+});
+
 module.exports = router;
