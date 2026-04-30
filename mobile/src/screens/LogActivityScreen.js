@@ -89,7 +89,17 @@ export default function LogActivityScreen({ navigation }) {
       if (data.isPR) {
         Alert.alert('🏆 New Personal Record!', `Best ${type.trim()} session ever — ${duration} minutes!`);
       }
-      navigation.goBack();
+      Alert.alert('Logged! 🎯', 'Save as a quick-log preset?', [
+        { text: 'No thanks', style: 'cancel', onPress: () => navigation.goBack() },
+        {
+          text: 'Save Preset',
+          onPress: async () => {
+            const name = `${type.trim()}${duration ? ` ${duration}m` : ''}`;
+            await api.post('/presets', { name, type: type.trim(), duration: duration ? parseInt(duration) : null, notes: notes.trim() || null }).catch(() => {});
+            navigation.goBack();
+          },
+        },
+      ]);
     } catch {
       Alert.alert('Error', 'Could not save activity');
     }

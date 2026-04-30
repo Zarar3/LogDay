@@ -31,6 +31,7 @@ model User {
   receivedMessages Message[]       @relation("MessageReceiver")
   messageReactions MessageReaction[]
   personalRecords  PersonalRecord[]
+  presets          Preset[]
 }
 
 model Activity {
@@ -138,6 +139,18 @@ model MessageReaction {
   user    User    @relation(fields: [userId],    references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
+}
+
+model Preset {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  type      String
+  duration  Int?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FriendRequest {

@@ -90,6 +90,45 @@ const stripStyles = StyleSheet.create({
                  textAlign: 'center', width: 68 },
 });
 
+// ─── Quick-log preset strip ──────────────────────────────────────────────────
+function PresetStrip({ presets, onLog, onDelete }) {
+  const { accent, cardBg, textPrimary, textSecondary, border } = useTheme();
+  if (presets.length === 0) return null;
+  return (
+    <View style={{ marginBottom: 4, paddingHorizontal: 16 }}>
+      <Text style={[pStyles.label, { color: textSecondary }]}>Quick Log</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 8 }}>
+        {presets.map(p => (
+          <TouchableOpacity key={p.id}
+            style={[pStyles.card, { backgroundColor: cardBg, borderColor: border }]}
+            onPress={() => onLog(p)}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Alert.alert('Delete Preset', `Remove "${p.name}"?`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => onDelete(p.id) },
+              ]);
+            }}>
+            <Text style={[pStyles.name, { color: textPrimary }]}>{p.name}</Text>
+            <Text style={[pStyles.sub, { color: accent }]}>
+              {p.type}{p.duration ? `  •  ${p.duration}m` : ''}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <Text style={[pStyles.hint, { color: textSecondary }]}>Long-press to delete</Text>
+    </View>
+  );
+}
+
+const pStyles = StyleSheet.create({
+  label: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
+  card:  { borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 10, minWidth: 110 },
+  name:  { fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  sub:   { fontSize: 12, fontWeight: '600' },
+  hint:  { fontSize: 10, marginTop: 6 },
+});
+
 // ─── Liquid-fill circle for overall goal progress ─────────────────────────────
 function GoalRing({ done, total, size, accent, bgColor }) {
   const pct = total === 0 ? 0 : Math.min(1, done / total);
@@ -151,6 +190,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [viewerUri, setViewerUri]     = useState(null);
   const [activeFriends, setActiveFriends] = useState([]);
   const [refreshing, setRefreshing]       = useState(false);
+  const [presets, setPresets]             = useState([]);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   async function loadAll() {
@@ -160,6 +200,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {}),
       api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
+      api.get('/presets').then(r => setPresets(r.data)).catch(() => {}),
     ]);
   }
 
@@ -188,6 +229,24 @@ export default function HomeScreen({ navigation, onLogout }) {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => { await removeToken(); onLogout(); } },
     ]);
+  }
+
+  async function logPreset(preset) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await api.post('/activities', {
+        type: preset.type, duration: preset.duration,
+        notes: preset.notes, date: todayDate(),
+      });
+      api.get(`/activities?date=${todayDate()}`).then(r => setActivities(r.data)).catch(() => {});
+    } catch { Alert.alert('Error', 'Could not log activity.'); }
+  }
+
+  async function deletePreset(id) {
+    try {
+      await api.delete(`/presets/${id}`);
+      setPresets(prev => prev.filter(p => p.id !== id));
+    } catch {}
   }
 
   async function toggleLike(id) {
@@ -280,6 +339,12 @@ export default function HomeScreen({ navigation, onLogout }) {
             <ActiveStrip
               friends={activeFriends}
               onPress={(userId) => navigation.navigate('UserProfile', { userId })}
+            />
+
+            <PresetStrip
+              presets={presets}
+              onLog={logPreset}
+              onDelete={deletePreset}
             />
 
             <View style={[styles.statsRow, { backgroundColor: statsBg, borderBottomColor: border }]}>
