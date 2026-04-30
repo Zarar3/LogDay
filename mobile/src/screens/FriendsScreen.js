@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
@@ -31,7 +32,7 @@ export default function FriendsScreen({ navigation }) {
     }
   }
 
-  async function acceptRequest(id) { await api.post(`/friends/requests/${id}/accept`); loadData(); }
+  async function acceptRequest(id) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); await api.post(`/friends/requests/${id}/accept`); loadData(); }
   async function rejectRequest(id) { await api.post(`/friends/requests/${id}/reject`); loadData(); }
 
   const medals = ['🥇', '🥈', '🥉'];

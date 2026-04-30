@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, FlatList, ScrollView, TouchableOpacity, StyleSheet,
   Alert, Image, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -41,6 +42,53 @@ const CONGRATS = [
 function getMotivation(id) {
   return CONGRATS[id.charCodeAt(0) % CONGRATS.length];
 }
+
+// ─── Who's active today strip ────────────────────────────────────────────────
+function ActiveStrip({ friends, onPress }) {
+  const { accent, cardBg, textSecondary, border } = useTheme();
+  if (friends.length === 0) return null;
+
+  return (
+    <View style={stripStyles.wrap}>
+      <Text style={[stripStyles.label, { color: textSecondary }]}>Active today</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={stripStyles.row}>
+        {friends.map(f => (
+          <TouchableOpacity key={f.id} style={stripStyles.item} onPress={() => onPress(f.id)}>
+            {f.avatarBase64 ? (
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${f.avatarBase64}` }}
+                style={[stripStyles.avatar, { borderColor: accent }]}
+              />
+            ) : (
+              <View style={[stripStyles.avatar, stripStyles.placeholder, { borderColor: accent, backgroundColor: cardBg }]}>
+                <Text style={{ fontSize: 18 }}>👤</Text>
+              </View>
+            )}
+            <View style={[stripStyles.dot, { borderColor: cardBg }]} />
+            <Text style={[stripStyles.name, { color: textSecondary }]} numberOfLines={1}>
+              {f.username}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const stripStyles = StyleSheet.create({
+  wrap:        { marginBottom: 16 },
+  label:       { fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+                 textTransform: 'uppercase', marginBottom: 10 },
+  row:         { gap: 16, paddingRight: 4 },
+  item:        { alignItems: 'center', position: 'relative', width: 56 },
+  avatar:      { width: 52, height: 52, borderRadius: 26, borderWidth: 2.5 },
+  placeholder: { justifyContent: 'center', alignItems: 'center' },
+  dot:         { position: 'absolute', top: 36, right: 2,
+                 width: 13, height: 13, borderRadius: 7,
+                 backgroundColor: '#22c55e', borderWidth: 2 },
+  name:        { fontSize: 10, fontWeight: '600', marginTop: 5,
+                 textAlign: 'center', width: 56 },
+});
 
 // ─── Liquid-fill circle for overall goal progress ─────────────────────────────
 function GoalRing({ done, total, size, accent, bgColor }) {
@@ -96,11 +144,12 @@ const DEADLINE_PRESETS = [
 export default function HomeScreen({ navigation, onLogout }) {
   const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg, isDark } = useTheme();
   const [activities, setActivities] = useState([]);
-  const [streak, setStreak]         = useState(0);
-  const [goals, setGoals]           = useState([]);
-  const [goalText, setGoalText]     = useState('');
-  const [deadlineDays, setDeadline] = useState(0);
-  const [viewerUri, setViewerUri]   = useState(null);
+  const [streak, setStreak]           = useState(0);
+  const [goals, setGoals]             = useState([]);
+  const [goalText, setGoalText]       = useState('');
+  const [deadlineDays, setDeadline]   = useState(0);
+  const [viewerUri, setViewerUri]     = useState(null);
+  const [activeFriends, setActiveFriends] = useState([]);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   useFocusEffect(useCallback(() => {
@@ -108,6 +157,7 @@ export default function HomeScreen({ navigation, onLogout }) {
     api.get(`/activities?date=${today}`).then(r => setActivities(r.data)).catch(() => {});
     api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {});
     api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {});
+    api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {});
   }, []));
 
   async function deleteActivity(id) {
@@ -149,6 +199,12 @@ export default function HomeScreen({ navigation, onLogout }) {
   }
 
   async function toggleGoal(id) {
+    const goal = goals.find(g => g.id === id);
+    if (goal?.done) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     try {
       const { data } = await api.patch(`/goals/${id}/toggle`);
       setGoals(prev => prev.map(g => g.id === id ? data : g));
@@ -207,6 +263,11 @@ export default function HomeScreen({ navigation, onLogout }) {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <>
+            <ActiveStrip
+              friends={activeFriends}
+              onPress={(userId) => navigation.navigate('UserProfile', { userId })}
+            />
+
             <View style={[styles.statsRow, { backgroundColor: statsBg, borderBottomColor: border }]}>
               <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
                 <Text style={styles.statEmoji}>🔥</Text>

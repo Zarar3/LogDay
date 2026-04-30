@@ -4,6 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 import ImageViewer from '../components/ImageViewer';
+import LikeButton from '../components/LikeButton';
+import * as Haptics from 'expo-haptics';
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -59,12 +61,19 @@ export default function DiscoverScreen({ navigation }) {
   async function refresh() { setRefresh(true); await loadFresh(); setRefresh(false); }
 
   async function toggleLike(id) {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    const liked = post.isLiked;
+    setPosts(prev => prev.map(p =>
+      p.id === id ? { ...p, isLiked: !liked, likeCount: p.likeCount + (liked ? -1 : 1) } : p
+    ));
     try {
-      const { data } = await api.post(`/activities/${id}/like`);
+      await api.post(`/activities/${id}/like`);
+    } catch {
       setPosts(prev => prev.map(p =>
-        p.id === id ? { ...p, isLiked: data.liked, likeCount: data.liked ? p.likeCount + 1 : p.likeCount - 1 } : p
+        p.id === id ? { ...p, isLiked: liked, likeCount: p.likeCount + (liked ? 1 : -1) } : p
       ));
-    } catch {}
+    }
   }
 
   return (
@@ -112,9 +121,11 @@ export default function DiscoverScreen({ navigation }) {
               {item.notes    ? <Text style={[styles.actNotes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
             </View>
             <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item.id)}>
-                <Text style={[styles.actionText, { color: textSecondary }]}>{item.isLiked ? '❤️' : '🤍'} {item.likeCount}</Text>
-              </TouchableOpacity>
+              <LikeButton
+                liked={item.isLiked}
+                count={item.likeCount}
+                onPress={() => toggleLike(item.id)}
+              />
               <TouchableOpacity style={styles.actionBtn}
                 onPress={() => navigation.navigate('Comments', { activityId: item.id, activityType: item.type })}>
                 <Text style={[styles.actionText, { color: textSecondary }]}>💬 {item.commentCount}</Text>

@@ -111,6 +111,31 @@ router.get('/leaderboard', auth, async (req, res) => {
   res.json(leaderboard);
 });
 
+// GET /api/friends/active-today  — friends who logged something today
+router.get('/active-today', auth, async (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const friendships = await prisma.friendship.findMany({
+    where: { OR: [{ userAId: req.user.id }, { userBId: req.user.id }] },
+    select: { userAId: true, userBId: true },
+  });
+  const friendIds = friendships.map(f =>
+    f.userAId === req.user.id ? f.userBId : f.userAId
+  );
+
+  if (friendIds.length === 0) return res.json([]);
+
+  const active = await prisma.user.findMany({
+    where: {
+      id: { in: friendIds },
+      activities: { some: { date: today } },
+    },
+    select: { id: true, username: true, avatarBase64: true },
+  });
+
+  res.json(active);
+});
+
 // GET /api/friends/feed  — recent activities from all friends
 router.get('/feed', auth, async (req, res) => {
   const friendships = await prisma.friendship.findMany({

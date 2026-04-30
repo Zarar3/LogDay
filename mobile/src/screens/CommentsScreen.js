@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as Haptics from 'expo-haptics';
+import LikeButton from '../components/LikeButton';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform,
@@ -63,6 +65,7 @@ export default function CommentsScreen({ route, navigation }) {
   }
 
   async function toggleCommentLike(commentId, parentId) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const { data } = await api.post(`/activities/${activityId}/comments/${commentId}/like`);
       setComments(prev => prev.map(c => {
@@ -98,11 +101,12 @@ export default function CommentsScreen({ route, navigation }) {
             <Text style={[styles.time, { color: textSecondary }]}>{timeAgo(r.createdAt)}</Text>
           </View>
           <Text style={[styles.commentText, { color: textPrimary, fontSize: 13 }]}>{r.text}</Text>
-          <TouchableOpacity onPress={() => toggleCommentLike(r.id, parentId)} style={styles.likeBtn}>
-            <Text style={[styles.likeTxt, { color: r.isLiked ? accent : textSecondary }]}>
-              {r.isLiked ? '❤️' : '🤍'} {r.likeCount > 0 ? r.likeCount : ''}
-            </Text>
-          </TouchableOpacity>
+          <LikeButton
+            liked={r.isLiked}
+            count={r.likeCount}
+            onPress={() => toggleCommentLike(r.id, parentId)}
+            size={13}
+          />
         </View>
       </View>
     );
@@ -148,11 +152,12 @@ export default function CommentsScreen({ route, navigation }) {
             </View>
 
             <View style={[styles.actions, { borderTopColor: border }]}>
-              <TouchableOpacity onPress={() => toggleCommentLike(c.id, null)} style={styles.likeBtn}>
-                <Text style={[styles.likeTxt, { color: c.isLiked ? accent : textSecondary }]}>
-                  {c.isLiked ? '❤️' : '🤍'} {c.likeCount > 0 ? c.likeCount : ''}
-                </Text>
-              </TouchableOpacity>
+              <LikeButton
+                liked={c.isLiked}
+                count={c.likeCount}
+                onPress={() => toggleCommentLike(c.id, null)}
+                size={13}
+              />
               <TouchableOpacity onPress={() => startReply(c)} style={styles.replyBtn}>
                 <Text style={[styles.replyTxt, { color: textSecondary }]}>↩ Reply</Text>
               </TouchableOpacity>

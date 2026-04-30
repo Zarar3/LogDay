@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
@@ -30,6 +31,7 @@ export default function ConversationScreen({ route, navigation }) {
 
   async function send() {
     if (!text.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const draft = text.trim();
     setText('');
     try {
