@@ -79,13 +79,16 @@ export default function LogActivityScreen({ navigation }) {
   async function handleSubmit() {
     if (!type.trim()) return Alert.alert('Hold on ✋', 'Activity type is required');
     try {
-      await api.post('/activities', {
+      const { data } = await api.post('/activities', {
         type: type.trim(),
         duration: duration ? parseInt(duration) : null,
         notes: notes.trim() || null,
         date: todayDate(),
         imageBase64: imageBase64 || null,
       });
+      if (data.isPR) {
+        Alert.alert('🏆 New Personal Record!', `Best ${type.trim()} session ever — ${duration} minutes!`);
+      }
       navigation.goBack();
     } catch {
       Alert.alert('Error', 'Could not save activity');

@@ -23,6 +23,7 @@ function fmt(a) {
     likeCount:   a._count?.likes    ?? 0,
     commentCount:a._count?.comments ?? 0,
     isLiked:     (a.likes?.length   ?? 0) > 0,
+    isPR:        a.isPR ?? false,
   };
 }
 
@@ -59,10 +60,37 @@ router.post('/', auth, async (req, res) => {
   if (duration && (isNaN(duration) || duration > 240))
     return res.status(400).json({ error: 'Duration cannot exceed 4 hours (240 minutes)' });
 
+  let isPR = false;
   const activity = await prisma.activity.create({
     data: { userId: req.user.id, type, duration, notes, date, imageBase64: imageBase64 || null },
   });
-  res.status(201).json({ ...activity, likeCount: 0, commentCount: 0, isLiked: false });
+
+  if (duration) {
+    const pr = await prisma.personalRecord.findUnique({
+      where: { userId_activityType: { userId: req.user.id, activityType: type } },
+    });
+    if (!pr || duration > pr.bestDuration) {
+      await prisma.personalRecord.upsert({
+        where:  { userId_activityType: { userId: req.user.id, activityType: type } },
+        update: { bestDuration: duration, activityId: activity.id },
+        create: { userId: req.user.id, activityType: type, bestDuration: duration, activityId: activity.id },
+      });
+      await prisma.activity.update({ where: { id: activity.id }, data: { isPR: true } });
+      isPR = true;
+    }
+  }
+
+  res.status(201).json({ ...activity, isPR, likeCount: 0, commentCount: 0, isLiked: false });
+});
+
+// GET /api/activities/prs  — personal records for the authed user
+router.get('/prs', auth, async (req, res) => {
+  const records = await prisma.personalRecord.findMany({
+    where: { userId: req.user.id },
+    include: { activity: { select: { id: true, type: true, duration: true, date: true } } },
+    orderBy: { updatedAt: 'desc' },
+  });
+  res.json(records);
 });
 
 // GET /api/activities/streak  — before /:id routes

@@ -116,7 +116,14 @@ export default function DiscoverScreen({ navigation }) {
               </TouchableOpacity>
             ) : null}
             <View style={styles.cardBody}>
-              <Text style={[styles.actType, { color: textPrimary }]}>{item.type}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text style={[styles.actType, { color: textPrimary }]}>{item.type}</Text>
+                {item.isPR && (
+                  <View style={styles.prBadge}>
+                    <Text style={styles.prBadgeText}>🏆 PR</Text>
+                  </View>
+                )}
+              </View>
               {item.duration ? <Text style={[styles.actMeta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
               {item.notes    ? <Text style={[styles.actNotes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
             </View>
@@ -157,6 +164,8 @@ const styles = StyleSheet.create({
   cardImage:    { width: '100%', height: 200 },
   cardBody:     { padding: 14, paddingTop: 10, paddingBottom: 8 },
   actType:      { fontSize: 16, fontWeight: '700' },
+  prBadge:      { backgroundColor: '#fef3c7', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  prBadgeText:  { fontSize: 11, fontWeight: '800', color: '#92400e' },
   actMeta:      { fontSize: 13, marginTop: 3 },
   actNotes:     { fontSize: 13, marginTop: 3 },
   cardActions:  { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 14, gap: 20 },

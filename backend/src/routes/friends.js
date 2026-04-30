@@ -216,6 +216,7 @@ router.get('/unified-feed', auth, async (req, res) => {
     likeCount:   a._count.likes,
     commentCount:a._count.comments,
     isLiked:     a.likes.length > 0,
+    isPR:        a.isPR ?? false,
   });
 
   let friendPosts = [];
