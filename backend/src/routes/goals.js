@@ -2,6 +2,16 @@ const router = require('express').Router();
 const prisma = require('../prisma');
 const auth   = require('../middleware/auth');
 
+// GET /api/goals/active — all goals with date >= today
+router.get('/active', auth, async (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const goals = await prisma.goal.findMany({
+    where: { userId: req.user.id, date: { gte: today } },
+    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+  });
+  res.json(goals);
+});
+
 // GET /api/goals?date=YYYY-MM-DD
 router.get('/', auth, async (req, res) => {
   const { date } = req.query;
