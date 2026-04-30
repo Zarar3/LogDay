@@ -44,23 +44,24 @@ const auth = require('../middleware/auth');
 router.get('/me', auth, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { id: true, email: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true, createdAt: true }
+    select: { id: true, email: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true, isPublic: true, createdAt: true }
   });
   res.json(user);
 });
 
-// PATCH /api/auth/profile  — update avatar and/or card color
+// PATCH /api/auth/profile  — update avatar, card colors, and privacy
 router.patch('/profile', auth, async (req, res) => {
-  const { avatarBase64, cardColor, cardSecondaryColor } = req.body;
+  const { avatarBase64, cardColor, cardSecondaryColor, isPublic } = req.body;
   const data = {};
   if (avatarBase64       !== undefined) data.avatarBase64       = avatarBase64       || null;
   if (cardColor          !== undefined) data.cardColor          = cardColor          || null;
   if (cardSecondaryColor !== undefined) data.cardSecondaryColor = cardSecondaryColor || null;
+  if (isPublic           !== undefined) data.isPublic           = Boolean(isPublic);
 
   const user = await prisma.user.update({
     where: { id: req.user.id },
     data,
-    select: { id: true, email: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true },
+    select: { id: true, email: true, username: true, avatarBase64: true, cardColor: true, cardSecondaryColor: true, isPublic: true },
   });
   res.json(user);
 });

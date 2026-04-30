@@ -204,7 +204,7 @@ router.get('/unified-feed', auth, async (req, res) => {
   }
 
   const publicPosts = await prisma.activity.findMany({
-    where:   { userId: { notIn: [req.user.id, ...friendIds] } },
+    where:   { userId: { notIn: [req.user.id, ...friendIds] }, user: { isPublic: true } },
     orderBy: { loggedAt: 'desc' },
     take:    limit,
     skip:    publicOffset,

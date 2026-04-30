@@ -135,20 +135,23 @@ export default function UserProfileScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: accent }]}
               onPress={() => navigation.navigate('Conversation', { friend: { id: userId, username } })}>
-              <Text style={styles.actionBtnText}>💬 Message</Text>
+              <Text style={styles.actionBtnIcon}>💬</Text>
+              <Text style={styles.actionBtnText}>Message</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: accent }]}
               onPress={sendFriendRequest}>
-              <Text style={styles.actionBtnText}>➕ Add Friend</Text>
+              <Text style={styles.actionBtnIcon}>➕</Text>
+              <Text style={styles.actionBtnText}>Add Friend</Text>
             </TouchableOpacity>
           )}
           {isFriend && (
             <TouchableOpacity
-              style={[styles.actionBtnOutline, { borderColor: accent }]}
+              style={[styles.actionBtnOutline, { borderColor: accent, backgroundColor: accent + '14' }]}
               onPress={() => navigation.navigate('Compare', { friend: { id: userId, username } })}>
-              <Text style={[styles.actionBtnOutlineText, { color: accent }]}>🔥 Compare Streaks</Text>
+              <Text style={styles.actionBtnIcon}>🔥</Text>
+              <Text style={[styles.actionBtnOutlineText, { color: accent }]}>Compare</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -216,11 +219,14 @@ const styles = StyleSheet.create({
   cardFooter:       { paddingVertical: 10, alignItems: 'center' },
   cardFooterText:   { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
 
-  actions:          { flexDirection: 'row', gap: 10, marginTop: 20, marginBottom: 4 },
-  actionBtn:        { flex: 1, padding: 14, borderRadius: 14, alignItems: 'center' },
-  actionBtnText:    { color: '#fff', fontWeight: '700', fontSize: 15 },
-  actionBtnOutline: { flex: 1, padding: 14, borderRadius: 14, alignItems: 'center', borderWidth: 2 },
-  actionBtnOutlineText: { fontWeight: '700', fontSize: 15 },
+  actions:              { flexDirection: 'row', gap: 12, marginTop: 20, marginBottom: 4 },
+  actionBtn:            { flex: 1, paddingVertical: 16, borderRadius: 18, alignItems: 'center',
+                          shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.18, shadowRadius: 8, elevation: 5 },
+  actionBtnIcon:        { fontSize: 22, marginBottom: 4 },
+  actionBtnText:        { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.3 },
+  actionBtnOutline:     { flex: 1, paddingVertical: 16, borderRadius: 18, alignItems: 'center', borderWidth: 2 },
+  actionBtnOutlineText: { fontWeight: '800', fontSize: 13, letterSpacing: 0.3 },
 
   feedSection:      { marginTop: 24 },
   feedTitle:        { fontWeight: '800', fontSize: 16, marginBottom: 12 },

@@ -29,12 +29,12 @@ function icon(emoji) {
 }
 
 function MainTabs({ onLogout }) {
-  const { accent } = useTheme();
+  const { accent, tabBg, border } = useTheme();
   return (
     <Tab.Navigator screenOptions={{
       headerShown: false,
       tabBarShowLabel: false,
-      tabBarStyle: { borderTopWidth: 1, borderTopColor: '#bae6fd', backgroundColor: '#fff', height: 58 },
+      tabBarStyle: { borderTopWidth: 1, borderTopColor: border, backgroundColor: tabBg, height: 58 },
       tabBarActiveTintColor: accent,
       tabBarInactiveTintColor: '#94a3b8',
     }}>

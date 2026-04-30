@@ -11,6 +11,12 @@ import ImageViewer from '../components/ImageViewer';
 
 function todayDate() { return new Date().toISOString().split('T')[0]; }
 
+function dateFromOffset(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return '🌅 Good morning!';
@@ -26,12 +32,74 @@ const REFLECTIONS = [
   "Consistency beats perfection every time. 💪",
 ];
 
+const CONGRATS = [
+  'Great job! 🎉', 'You crushed it! 💪', 'Nailed it! 🔥',
+  'Well done! ⭐', 'Keep it up! 🚀', 'Amazing! 🌟',
+  "You're on fire! 🔥", 'Smashed it! 💥',
+];
+
+function getMotivation(id) {
+  return CONGRATS[id.charCodeAt(0) % CONGRATS.length];
+}
+
+// ─── Liquid-fill circle for overall goal progress ─────────────────────────────
+function GoalRing({ done, total, size, accent, bgColor }) {
+  const pct = total === 0 ? 0 : Math.min(1, done / total);
+  const allDone = total > 0 && done === total;
+
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#e2e8f0' }}>
+      <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: `${pct * 100}%`,
+        backgroundColor: allDone ? accent : accent + 'cc',
+      }} />
+      <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+        {total === 0 ? (
+          <Text style={{ fontSize: size * 0.22, color: '#94a3b8' }}>—</Text>
+        ) : (
+          <>
+            <Text style={{ fontSize: size * 0.22, fontWeight: '900', color: pct > 0.55 ? '#fff' : '#1e293b', lineHeight: size * 0.26 }}>
+              {done}/{total}
+            </Text>
+            {allDone && <Text style={{ fontSize: size * 0.16, color: '#fff' }}>✓</Text>}
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── Circle toggle per goal ───────────────────────────────────────────────────
+function GoalCircle({ done, accent }) {
+  const size = 26;
+  if (done) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: accent, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>✓</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: '#000' }} />
+  );
+}
+
+const DEADLINE_PRESETS = [
+  { label: 'Today',    days: 0 },
+  { label: '+1 day',  days: 1 },
+  { label: '+3 days', days: 3 },
+  { label: '+1 week', days: 7 },
+  { label: '+2 wks',  days: 14 },
+];
+
 export default function HomeScreen({ navigation, onLogout }) {
   const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg, isDark } = useTheme();
   const [activities, setActivities] = useState([]);
   const [streak, setStreak]         = useState(0);
   const [goals, setGoals]           = useState([]);
   const [goalText, setGoalText]     = useState('');
+  const [deadlineDays, setDeadline] = useState(0);
   const [viewerUri, setViewerUri]   = useState(null);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
@@ -39,7 +107,7 @@ export default function HomeScreen({ navigation, onLogout }) {
     const today = todayDate();
     api.get(`/activities?date=${today}`).then(r => setActivities(r.data)).catch(() => {});
     api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {});
-    api.get(`/goals?date=${today}`).then(r => setGoals(r.data)).catch(() => {});
+    api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {});
   }, []));
 
   async function deleteActivity(id) {
@@ -72,8 +140,9 @@ export default function HomeScreen({ navigation, onLogout }) {
 
   async function addGoal() {
     if (!goalText.trim()) return;
+    const date = dateFromOffset(deadlineDays);
     try {
-      const { data } = await api.post('/goals', { text: goalText.trim(), date: todayDate() });
+      const { data } = await api.post('/goals', { text: goalText.trim(), date });
       setGoals(prev => [...prev, data]);
       setGoalText('');
     } catch {}
@@ -93,7 +162,31 @@ export default function HomeScreen({ navigation, onLogout }) {
     } catch {}
   }
 
-  const doneCount = goals.filter(g => g.done).length;
+  const today       = todayDate();
+  const todayGoals  = goals.filter(g => g.date === today);
+  const futureGoals = goals.filter(g => g.date >  today);
+  const doneCount   = goals.filter(g => g.done).length;
+
+  function renderGoal(g) {
+    const isToday = g.date === today;
+    return (
+      <View key={g.id} style={[styles.goalRow, { backgroundColor: cardBg, borderColor: g.done ? accent + '55' : border }]}>
+        <TouchableOpacity onPress={() => toggleGoal(g.id)} style={styles.circleWrap}>
+          <GoalCircle done={g.done} accent={accent} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.goalText, { color: textPrimary }, g.done && styles.goalTextDone]}>{g.text}</Text>
+          {g.done
+            ? <Text style={[styles.motivate, { color: accent }]}>{getMotivation(g.id)}</Text>
+            : !isToday && <Text style={[styles.deadline, { color: textSecondary }]}>Due {g.date}</Text>
+          }
+        </View>
+        <TouchableOpacity onPress={() => deleteGoal(g.id)}>
+          <Text style={styles.goalDelete}>✕</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: pageBg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -101,7 +194,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         <View>
           <Text style={styles.greeting}>{greeting()}</Text>
           <Text style={styles.heading}>Today's Log 📋</Text>
-          <Text style={styles.date}>{todayDate()}</Text>
+          <Text style={styles.date}>{today}</Text>
         </View>
         <TouchableOpacity onPress={confirmLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Sign out</Text>
@@ -126,9 +219,8 @@ export default function HomeScreen({ navigation, onLogout }) {
                 <Text style={[styles.statLabel, { color: textSecondary }]}>logged</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <Text style={styles.statEmoji}>✅</Text>
-                <Text style={[styles.statNum, { color: accent }]}>{doneCount}/{goals.length}</Text>
-                <Text style={[styles.statLabel, { color: textSecondary }]}>goals</Text>
+                <GoalRing done={doneCount} total={goals.length} size={52} accent={accent} bgColor={cardBg} />
+                <Text style={[styles.statLabel, { color: textSecondary, marginTop: 4 }]}>goals</Text>
               </View>
             </View>
 
@@ -136,23 +228,43 @@ export default function HomeScreen({ navigation, onLogout }) {
               <Text style={[styles.reflectionText, { color: accent }]}>{reflection}</Text>
             </View>
 
+            {/* Goals section */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: accent }]}>Today's Goals 🎯</Text>
-              {goals.map(g => (
-                <View key={g.id} style={[styles.goalRow, { backgroundColor: cardBg, borderColor: border }]}>
-                  <TouchableOpacity onPress={() => toggleGoal(g.id)} style={styles.checkbox}>
-                    <Text style={styles.checkboxText}>{g.done ? '✅' : '⬜'}</Text>
+              <Text style={[styles.sectionTitle, { color: accent }]}>Goals 🎯</Text>
+
+              {todayGoals.length > 0 && (
+                <>
+                  <Text style={[styles.groupLabel, { color: textSecondary }]}>TODAY</Text>
+                  {todayGoals.map(renderGoal)}
+                </>
+              )}
+
+              {futureGoals.length > 0 && (
+                <>
+                  <Text style={[styles.groupLabel, { color: textSecondary, marginTop: todayGoals.length > 0 ? 10 : 0 }]}>UPCOMING</Text>
+                  {futureGoals.map(renderGoal)}
+                </>
+              )}
+
+              {goals.length === 0 && (
+                <Text style={[styles.noGoals, { color: textSecondary }]}>No goals yet — add one below!</Text>
+              )}
+
+              {/* Deadline presets */}
+              <View style={styles.presetRow}>
+                {DEADLINE_PRESETS.map(p => (
+                  <TouchableOpacity key={p.days} onPress={() => setDeadline(p.days)}
+                    style={[styles.preset, { borderColor: accent, backgroundColor: deadlineDays === p.days ? accent : 'transparent' }]}>
+                    <Text style={[styles.presetText, { color: deadlineDays === p.days ? '#fff' : accent }]}>{p.label}</Text>
                   </TouchableOpacity>
-                  <Text style={[styles.goalText, { color: textPrimary }, g.done && styles.goalTextDone]}>{g.text}</Text>
-                  <TouchableOpacity onPress={() => deleteGoal(g.id)}>
-                    <Text style={styles.goalDelete}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                ))}
+              </View>
+
+              {/* Goal input */}
               <View style={styles.goalInputRow}>
                 <TextInput
                   style={[styles.goalInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
-                  placeholder="Add a goal for today..."
+                  placeholder={`Add a goal (${deadlineDays === 0 ? 'today' : `in ${deadlineDays}d`})...`}
                   value={goalText} onChangeText={setGoalText}
                   placeholderTextColor={textSecondary}
                   onSubmitEditing={addGoal} returnKeyType="done" />
@@ -213,7 +325,7 @@ export default function HomeScreen({ navigation, onLogout }) {
 
 const styles = StyleSheet.create({
   container:     { flex: 1 },
-  header:        { padding: 24, paddingTop: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  header:        { padding: 24, paddingTop: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   greeting:      { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 2 },
   heading:       { fontSize: 26, fontWeight: '800', color: '#fff' },
   date:          { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 2 },
@@ -230,17 +342,23 @@ const styles = StyleSheet.create({
   section:       { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
   sectionTitle:  { fontWeight: '800', fontSize: 15, marginBottom: 10 },
   sectionTitle2: { fontWeight: '800', fontSize: 15, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
-  goalRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 12, marginBottom: 6, borderWidth: 1.5, gap: 10 },
-  checkbox:      { width: 28 },
-  checkboxText:  { fontSize: 20 },
-  goalText:      { flex: 1, fontSize: 14, fontWeight: '500' },
-  goalTextDone:  { textDecorationLine: 'line-through', color: '#94a3b8' },
+  groupLabel:    { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
+  noGoals:       { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
+  goalRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 12, marginBottom: 8, borderWidth: 1.5, gap: 10 },
+  circleWrap:    { width: 30, alignItems: 'center' },
+  goalText:      { fontSize: 14, fontWeight: '600' },
+  goalTextDone:  { textDecorationLine: 'line-through', opacity: 0.5 },
+  motivate:      { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  deadline:      { fontSize: 11, marginTop: 2, fontWeight: '600' },
   goalDelete:    { color: '#94a3b8', fontSize: 16, paddingLeft: 4 },
-  goalInputRow:  { flexDirection: 'row', gap: 8, marginTop: 4 },
+  presetRow:     { flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  preset:        { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  presetText:    { fontSize: 11, fontWeight: '700' },
+  goalInputRow:  { flexDirection: 'row', gap: 8, marginTop: 2 },
   goalInput:     { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
   goalAddBtn:    { borderRadius: 12, width: 44, justifyContent: 'center', alignItems: 'center' },
   goalAddText:   { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26 },
-  card:          { borderRadius: 16, marginHorizontal: 12, marginBottom: 12, borderWidth: 1.5, overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  card:          { borderRadius: 20, marginHorizontal: 12, marginBottom: 12, borderWidth: 1, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   cardImage:     { width: '100%', height: 180 },
   cardBody:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingBottom: 8 },
   cardLeft:      { flex: 1 },

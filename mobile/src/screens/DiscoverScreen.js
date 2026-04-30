@@ -131,11 +131,11 @@ export default function DiscoverScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container:    { flex: 1 },
-  header:       { padding: 24, paddingTop: 56 },
+  header:       { padding: 24, paddingTop: 56, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   heading:      { fontSize: 26, fontWeight: '800', color: '#fff' },
   sub:          { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
   list:         { padding: 12, paddingBottom: 32 },
-  card:         { borderRadius: 16, marginBottom: 14, borderWidth: 1.5, overflow: 'hidden', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
+  card:         { borderRadius: 20, marginBottom: 14, borderWidth: 1, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   cardHeader:   { flexDirection: 'row', alignItems: 'center', padding: 14, paddingBottom: 10, gap: 10 },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   avatarLetter: { fontSize: 17, fontWeight: '800' },

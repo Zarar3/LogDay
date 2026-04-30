@@ -15,6 +15,7 @@ model User {
   avatarBase64       String?
   cardColor          String?
   cardSecondaryColor String?
+  isPublic           Boolean  @default(true)
   createdAt          DateTime @default(now())
 
   activities       Activity[]

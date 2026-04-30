@@ -175,13 +175,18 @@ const APP_ACCENT_COLORS = [
   '#10b981', '#f97316', '#ef4444', '#f59e0b',
 ];
 
+const TAB_BG_COLORS = [
+  '#ffffff', '#f8fafc', '#f0f9ff', '#fff7ed',
+  '#0f172a', '#1e293b', '#18181b', '#1e1b4b',
+];
+
 const DEFAULT_PRIMARY   = '#6366f1';
 const DEFAULT_SECONDARY = '#fffbeb';
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const { pageBg, accent: appAccent, updateTheme, toggleDark, isDark,
+  const { pageBg, accent: appAccent, tabBg, updateTheme, toggleDark, isDark,
           cardBg, textPrimary, textSecondary, border } = useTheme();
   const [user, setUser]           = useState(null);
   const [streak, setStreak]       = useState(0);
@@ -190,6 +195,7 @@ export default function ProfileScreen() {
   const [friendCount, setFriends] = useState(0);
   const [primary, setPrimary]     = useState(DEFAULT_PRIMARY);
   const [secondary, setSecondary] = useState(DEFAULT_SECONDARY);
+  const [isPublic, setIsPublic]   = useState(true);
 
   const saveTimer = useRef({});
 
@@ -209,6 +215,7 @@ export default function ProfileScreen() {
       setFriends(friendsRes.data.length);
       if (me.cardColor)          setPrimary(me.cardColor);
       if (me.cardSecondaryColor) setSecondary(me.cardSecondaryColor);
+      setIsPublic(me.isPublic !== false);
       const allActs = actsRes.data;
       setTotal(allActs.length);
       const counts = {};
@@ -251,6 +258,16 @@ export default function ProfileScreen() {
     saveTimer.current.secondary = setTimeout(() => {
       api.patch('/auth/profile', { cardSecondaryColor: color }).catch(() => {});
     }, 600);
+  }
+
+  async function togglePrivacy() {
+    const next = !isPublic;
+    setIsPublic(next);
+    try {
+      await api.patch('/auth/profile', { isPublic: next });
+    } catch {
+      setIsPublic(!next);
+    }
   }
 
   if (!user) return (
@@ -376,6 +393,35 @@ export default function ProfileScreen() {
           ))}
         </View>
         <ColorPicker value={appAccent} onChange={v => updateTheme({ accent: v })} />
+
+        <Text style={[styles.colorLabel, { color: textSecondary, marginTop: 20 }]}>Tab Bar Color</Text>
+        <View style={styles.colorRow}>
+          {TAB_BG_COLORS.map(c => (
+            <TouchableOpacity key={c} onPress={() => updateTheme({ tabBg: c })}
+              style={[styles.swatch, { backgroundColor: c, borderWidth: 1, borderColor: border }, tabBg === c && styles.swatchSelected]} />
+          ))}
+        </View>
+        <ColorPicker value={tabBg} onChange={v => updateTheme({ tabBg: v })} />
+      </View>
+
+      {/* Privacy */}
+      <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
+        <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 14 }]}>Privacy</Text>
+        <TouchableOpacity style={[styles.privacyRow, { borderColor: border }]} onPress={togglePrivacy} activeOpacity={0.75}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.privacyTitle, { color: textPrimary }]}>
+              {isPublic ? '🌐  Public Profile' : '🔒  Private Profile'}
+            </Text>
+            <Text style={[styles.privacyDesc, { color: textSecondary }]}>
+              {isPublic
+                ? 'Anyone can see your activity logs'
+                : 'Only friends can see your activity logs'}
+            </Text>
+          </View>
+          <View style={[styles.privacyToggle, { backgroundColor: isPublic ? appAccent : border }]}>
+            <View style={[styles.privacyKnob, { alignSelf: isPublic ? 'flex-end' : 'flex-start' }]} />
+          </View>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -434,4 +480,13 @@ const styles = StyleSheet.create({
   swatchSelected:   { transform: [{ scale: 1.25 }],
                       shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+
+  privacyRow:       { flexDirection: 'row', alignItems: 'center', borderWidth: 1,
+                      borderRadius: 14, padding: 14, gap: 14 },
+  privacyTitle:     { fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  privacyDesc:      { fontSize: 12, fontWeight: '500' },
+  privacyToggle:    { width: 48, height: 28, borderRadius: 14, padding: 3, justifyContent: 'center' },
+  privacyKnob:      { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+                      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
 });
