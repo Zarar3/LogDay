@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 
@@ -298,6 +300,7 @@ export default function ProfileScreen() {
   const [calendarDates, setCalendar]  = useState([]);
 
   const saveTimer = useRef({});
+  const cardRef   = useRef(null);
 
   useFocusEffect(useCallback(() => { loadAll(); }, []));
 
@@ -362,6 +365,20 @@ export default function ProfileScreen() {
     }, 600);
   }
 
+  async function shareCard() {
+    try {
+      const uri = await captureRef(cardRef, { format: 'png', quality: 1.0 });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your LogDay card' });
+      } else {
+        Alert.alert('Not supported', 'Sharing is not available on this device.');
+      }
+    } catch {
+      Alert.alert('Error', 'Could not capture card.');
+    }
+  }
+
   async function togglePrivacy() {
     const next = !isPublic;
     setIsPublic(next);
@@ -383,7 +400,7 @@ export default function ProfileScreen() {
       <Text style={[styles.screenTitle, { color: textPrimary }]}>Profile</Text>
 
       {/* Card */}
-      <View style={[styles.card, { borderColor: primary, backgroundColor: secondary }]}>
+      <View ref={cardRef} collapsable={false} style={[styles.card, { borderColor: primary, backgroundColor: secondary }]}>
         <View style={[styles.cardBanner, { backgroundColor: primary }]}>
           <Text style={styles.cardName}>{user.username}</Text>
           <Text style={styles.cardType}>🎮 Logger  •  🔥 {streak} day streak</Text>
@@ -445,6 +462,13 @@ export default function ProfileScreen() {
           <Text style={styles.cardFooterText}>LogDay  •  {user.email}</Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={[shareStyles.btn, { backgroundColor: primary }]}
+        onPress={shareCard}
+        activeOpacity={0.8}>
+        <Text style={shareStyles.btnText}>📤  Share My Card</Text>
+      </TouchableOpacity>
 
       {/* Activity calendar */}
       <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
@@ -597,4 +621,12 @@ const styles = StyleSheet.create({
   privacyKnob:      { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
                       shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
                       shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
+});
+
+const shareStyles = StyleSheet.create({
+  btn:     { marginTop: 14, marginBottom: 4, borderRadius: 14, paddingVertical: 12,
+             paddingHorizontal: 28, alignSelf: 'center',
+             shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+             shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
+  btnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

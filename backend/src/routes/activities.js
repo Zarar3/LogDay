@@ -109,6 +109,51 @@ router.get('/prs', auth, async (req, res) => {
   res.json(records);
 });
 
+// GET /api/activities/weekly-summary
+router.get('/weekly-summary', auth, async (req, res) => {
+  const now      = new Date();
+  const dayOfWk  = now.getDay(); // 0=Sun
+
+  const thisMonday = new Date(now);
+  thisMonday.setDate(now.getDate() - ((dayOfWk + 6) % 7));
+  thisMonday.setHours(0, 0, 0, 0);
+
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(lastMonday.getDate() - 7);
+  const lastSunday = new Date(thisMonday);
+  lastSunday.setDate(lastSunday.getDate() - 1);
+
+  const fmt = d => d.toISOString().split('T')[0];
+
+  const [thisWeekActs, lastWeekActs, streak] = await Promise.all([
+    prisma.activity.findMany({
+      where: { userId: req.user.id, date: { gte: fmt(thisMonday), lte: fmt(now) } },
+      select: { type: true, duration: true },
+    }),
+    prisma.activity.findMany({
+      where: { userId: req.user.id, date: { gte: fmt(lastMonday), lte: fmt(lastSunday) } },
+      select: { type: true, duration: true },
+    }),
+    getStreak(req.user.id),
+  ]);
+
+  function summarize(acts) {
+    const totalSessions = acts.length;
+    const totalMinutes  = acts.reduce((s, a) => s + (a.duration || 0), 0);
+    const counts = {};
+    acts.forEach(a => { counts[a.type] = (counts[a.type] || 0) + 1; });
+    const topType = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    return { totalSessions, totalMinutes, topType, counts };
+  }
+
+  res.json({
+    thisWeek:  summarize(thisWeekActs),
+    lastWeek:  summarize(lastWeekActs),
+    streak,
+    weekStart: fmt(thisMonday),
+  });
+});
+
 // GET /api/activities/streak  — before /:id routes
 router.get('/streak', auth, async (req, res) => {
   const streak = await getStreak(req.user.id);

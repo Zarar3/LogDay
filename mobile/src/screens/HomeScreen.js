@@ -255,6 +255,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [refreshing, setRefreshing]       = useState(false);
   const [presets, setPresets]             = useState([]);
   const [challenges, setChallenges]       = useState([]);
+  const [weekSummary, setWeekSummary]     = useState(null);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   async function loadAll() {
@@ -266,6 +267,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
       api.get('/presets').then(r => setPresets(r.data)).catch(() => {}),
       api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {}),
+      api.get('/activities/weekly-summary').then(r => setWeekSummary(r.data)).catch(() => {}),
     ]);
   }
 
@@ -505,6 +507,30 @@ export default function HomeScreen({ navigation, onLogout }) {
               </View>
             )}
 
+            {weekSummary && (
+              <TouchableOpacity
+                style={[wStyles.card, { backgroundColor: cardBg, borderColor: border }]}
+                onPress={() => navigation.navigate('WeeklyDigest')}
+                activeOpacity={0.75}>
+                <View style={wStyles.left}>
+                  <Text style={[wStyles.label, { color: textSecondary }]}>This week</Text>
+                  <Text style={[wStyles.sessions, { color: textPrimary }]}>
+                    {weekSummary.thisWeek.totalSessions} session{weekSummary.thisWeek.totalSessions !== 1 ? 's' : ''}
+                  </Text>
+                  {weekSummary.thisWeek.topType ? (
+                    <Text style={[wStyles.top, { color: textSecondary }]}>Top: {weekSummary.thisWeek.topType}</Text>
+                  ) : null}
+                </View>
+                <View style={wStyles.right}>
+                  <View style={[wStyles.streak, { backgroundColor: accent + '18' }]}>
+                    <Text style={[wStyles.streakNum, { color: accent }]}>🔥 {weekSummary.streak}</Text>
+                    <Text style={[wStyles.streakLbl, { color: textSecondary }]}>day streak</Text>
+                  </View>
+                  <Text style={[wStyles.cta, { color: accent }]}>See recap →</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
             <Text style={[styles.sectionTitle2, { color: accent }]}>Activities</Text>
           </>
         }
@@ -606,4 +632,18 @@ const styles = StyleSheet.create({
   emptySubText:  { fontSize: 14, marginTop: 4 },
   fab:           { position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 },
   fabText:       { color: '#fff', fontWeight: '800', fontSize: 16 },
+});
+
+const wStyles = StyleSheet.create({
+  card:       { marginHorizontal: 12, marginBottom: 10, borderRadius: 16, borderWidth: 1.5,
+                padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  left:       { flex: 1 },
+  label:      { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
+  sessions:   { fontSize: 22, fontWeight: '900', marginBottom: 2 },
+  top:        { fontSize: 12, fontWeight: '600' },
+  right:      { alignItems: 'flex-end', gap: 8 },
+  streak:     { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  streakNum:  { fontSize: 15, fontWeight: '900' },
+  streakLbl:  { fontSize: 10, fontWeight: '600' },
+  cta:        { fontSize: 13, fontWeight: '800' },
 });

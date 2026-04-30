@@ -18,7 +18,8 @@ import DiscoverScreen     from '../screens/DiscoverScreen';
 import MessagesScreen     from '../screens/MessagesScreen';
 import ConversationScreen  from '../screens/ConversationScreen';
 import UserProfileScreen  from '../screens/UserProfileScreen';
-import NewChallengeScreen from '../screens/NewChallengeScreen';
+import NewChallengeScreen  from '../screens/NewChallengeScreen';
+import WeeklyDigestScreen  from '../screens/WeeklyDigestScreen';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -62,6 +63,7 @@ function MainStack({ onLogout }) {
       <Stack.Screen name="Conversation"  component={ConversationScreen} />
       <Stack.Screen name="UserProfile"   component={UserProfileScreen} />
       <Stack.Screen name="NewChallenge"  component={NewChallengeScreen} />
+      <Stack.Screen name="WeeklyDigest" component={WeeklyDigestScreen} />
     </Stack.Navigator>
   );
 }
