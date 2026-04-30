@@ -53,7 +53,8 @@ router.get('/:userId', auth, async (req, res) => {
     },
     orderBy: { createdAt: 'asc' },
     include: {
-      sender: { select: { id: true, username: true } },
+      sender:    { select: { id: true, username: true } },
+      reactions: { select: { id: true, userId: true, emoji: true } },
     },
   });
 
@@ -64,6 +65,33 @@ router.get('/:userId', auth, async (req, res) => {
   });
 
   res.json(messages);
+});
+
+// POST /api/messages/:messageId/react  — toggle an emoji reaction on a message
+router.post('/:messageId/react', auth, async (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'emoji required' });
+
+  const message = await prisma.message.findUnique({ where: { id: req.params.messageId } });
+  if (!message) return res.status(404).json({ error: 'Message not found' });
+
+  // Only participants in the conversation can react
+  if (message.senderId !== req.user.id && message.receiverId !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
+
+  const existing = await prisma.messageReaction.findUnique({
+    where: { messageId_userId_emoji: { messageId: req.params.messageId, userId: req.user.id, emoji } },
+  });
+
+  if (existing) {
+    await prisma.messageReaction.delete({ where: { id: existing.id } });
+    return res.json({ action: 'removed', emoji });
+  }
+
+  const reaction = await prisma.messageReaction.create({
+    data: { messageId: req.params.messageId, userId: req.user.id, emoji },
+  });
+  res.status(201).json({ action: 'added', emoji, id: reaction.id });
 });
 
 // POST /api/messages/:userId  — send a message

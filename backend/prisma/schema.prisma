@@ -29,6 +29,7 @@ model User {
   goals            Goal[]
   sentMessages     Message[]       @relation("MessageSender")
   receivedMessages Message[]       @relation("MessageReceiver")
+  messageReactions MessageReaction[]
 }
 
 model Activity {
@@ -104,8 +105,22 @@ model Message {
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  sender   User @relation("MessageSender",   fields: [senderId],   references: [id], onDelete: Cascade)
-  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender    User              @relation("MessageSender",   fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver  User              @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  reactions MessageReaction[]
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId],    references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
 }
 
 model FriendRequest {

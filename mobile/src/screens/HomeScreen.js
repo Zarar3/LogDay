@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, Image, TextInput, KeyboardAvoidingView, Platform,
+  Alert, Image, TextInput, KeyboardAvoidingView, Platform, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
@@ -76,18 +76,18 @@ function ActiveStrip({ friends, onPress }) {
 }
 
 const stripStyles = StyleSheet.create({
-  wrap:        { marginBottom: 16 },
+  wrap:        { marginTop: 16, marginBottom: 20, paddingHorizontal: 16 },
   label:       { fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
-                 textTransform: 'uppercase', marginBottom: 10 },
-  row:         { gap: 16, paddingRight: 4 },
-  item:        { alignItems: 'center', position: 'relative', width: 56 },
-  avatar:      { width: 52, height: 52, borderRadius: 26, borderWidth: 2.5 },
+                 textTransform: 'uppercase', marginBottom: 12 },
+  row:         { gap: 20, paddingRight: 8 },
+  item:        { alignItems: 'center', position: 'relative', width: 68 },
+  avatar:      { width: 62, height: 62, borderRadius: 31, borderWidth: 2.5 },
   placeholder: { justifyContent: 'center', alignItems: 'center' },
-  dot:         { position: 'absolute', top: 36, right: 2,
-                 width: 13, height: 13, borderRadius: 7,
+  dot:         { position: 'absolute', top: 44, right: 4,
+                 width: 14, height: 14, borderRadius: 7,
                  backgroundColor: '#22c55e', borderWidth: 2 },
-  name:        { fontSize: 10, fontWeight: '600', marginTop: 5,
-                 textAlign: 'center', width: 56 },
+  name:        { fontSize: 11, fontWeight: '600', marginTop: 6,
+                 textAlign: 'center', width: 68 },
 });
 
 // ─── Liquid-fill circle for overall goal progress ─────────────────────────────
@@ -150,15 +150,26 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [deadlineDays, setDeadline]   = useState(0);
   const [viewerUri, setViewerUri]     = useState(null);
   const [activeFriends, setActiveFriends] = useState([]);
+  const [refreshing, setRefreshing]       = useState(false);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
-  useFocusEffect(useCallback(() => {
+  async function loadAll() {
     const today = todayDate();
-    api.get(`/activities?date=${today}`).then(r => setActivities(r.data)).catch(() => {});
-    api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {});
-    api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {});
-    api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {});
-  }, []));
+    await Promise.all([
+      api.get(`/activities?date=${today}`).then(r => setActivities(r.data)).catch(() => {}),
+      api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {}),
+      api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
+      api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
+    ]);
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
+  }
+
+  useFocusEffect(useCallback(() => { loadAll(); }, []));
 
   async function deleteActivity(id) {
     await api.delete(`/activities/${id}`);
@@ -261,6 +272,9 @@ export default function HomeScreen({ navigation, onLogout }) {
         data={activities}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[accent]} />
+        }
         ListHeaderComponent={
           <>
             <ActiveStrip

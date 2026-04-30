@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -11,8 +11,15 @@ export default function FriendsScreen({ navigation }) {
   const [requests, setRequests]       = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [username, setUsername]       = useState('');
+  const [refreshing, setRefreshing]   = useState(false);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }
 
   async function loadData() {
     const [f, r, l] = await Promise.all([
@@ -45,6 +52,9 @@ export default function FriendsScreen({ navigation }) {
 
       <FlatList
         data={[]} keyExtractor={() => ''} renderItem={null}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[accent]} />
+        }
         ListHeaderComponent={
           <>
             <View style={styles.section}>
