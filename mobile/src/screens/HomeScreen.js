@@ -256,12 +256,13 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [presets, setPresets]             = useState([]);
   const [challenges, setChallenges]       = useState([]);
   const [weekSummary, setWeekSummary]     = useState(null);
+  const [showAllActs, setShowAllActs]     = useState(false);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   async function loadAll() {
     const today = todayDate();
     await Promise.all([
-      api.get(`/activities?date=${today}`).then(r => setActivities(r.data)).catch(() => {}),
+      api.get(`/activities?date=${today}`).then(r => { setActivities(r.data); setShowAllActs(false); }).catch(() => {}),
       api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {}),
       api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
@@ -403,7 +404,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       </View>
 
       <FlatList
-        data={activities}
+        data={showAllActs ? activities : activities.slice(0, 5)}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -534,6 +535,17 @@ export default function HomeScreen({ navigation, onLogout }) {
             <Text style={[styles.sectionTitle2, { color: accent }]}>Activities</Text>
           </>
         }
+        ListFooterComponent={
+          activities.length > 5 ? (
+            <TouchableOpacity
+              style={[styles.seeMoreBtn, { borderColor: border }]}
+              onPress={() => setShowAllActs(v => !v)}>
+              <Text style={[styles.seeMoreText, { color: accent }]}>
+                {showAllActs ? 'Show less ↑' : `See ${activities.length - 5} more ↓`}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>🫙</Text>
@@ -632,6 +644,9 @@ const styles = StyleSheet.create({
   emptySubText:  { fontSize: 14, marginTop: 4 },
   fab:           { position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 },
   fabText:       { color: '#fff', fontWeight: '800', fontSize: 16 },
+  seeMoreBtn:    { marginHorizontal: 12, marginBottom: 16, paddingVertical: 12, borderRadius: 14,
+                   borderWidth: 1.5, alignItems: 'center' },
+  seeMoreText:   { fontWeight: '700', fontSize: 14 },
 });
 
 const wStyles = StyleSheet.create({
