@@ -185,66 +185,102 @@ const DEFAULT_SECONDARY = '#fffbeb';
 
 // ─── Streak calendar ─────────────────────────────────────────────────────────
 
-function buildGrid(weeks) {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const cells = [];
-  for (let i = weeks * 7 + dayOfWeek; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    cells.push(d.toISOString().split('T')[0]);
-  }
-  return cells;
-}
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+const DAY_LABELS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function CalendarGrid({ activeDates = [], weeks = 12 }) {
-  const { accent, border } = useTheme();
+function CalendarGrid({ activeDates = [] }) {
+  const { accent, border, textPrimary, textSecondary, cardBg } = useTheme();
   const activeSet = new Set(activeDates);
-  const cells     = buildGrid(weeks);
-  const CELL = 13, GAP = 3;
+  const today     = new Date();
 
-  const columns = [];
-  for (let i = 0; i < cells.length; i += 7) columns.push(cells.slice(i, i + 7));
+  const [year,  setYear]  = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
 
-  const DAY_LABELS = ['S','M','T','W','T','F','S'];
+  function prevMonth() {
+    if (month === 0) { setMonth(11); setYear(y => y - 1); }
+    else setMonth(m => m - 1);
+  }
+  function nextMonth() {
+    const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+    if (isCurrentMonth) return;
+    if (month === 11) { setMonth(0); setYear(y => y + 1); }
+    else setMonth(m => m + 1);
+  }
+
+  // Build the grid: pad start with nulls so day 1 falls on correct weekday
+  const firstDay  = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [...Array(firstDay).fill(null),
+                 ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  // Pad end to complete last row
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View>
-        <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-          {columns.map((col, ci) => {
-            const d    = new Date(col[0] + 'T00:00:00');
-            const show = ci === 0 || d.getDate() <= 7;
+    <View>
+      {/* Month navigation */}
+      <View style={calStyles.nav}>
+        <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn}>
+          <Text style={[calStyles.navArrow, { color: accent }]}>‹</Text>
+        </TouchableOpacity>
+        <Text style={[calStyles.monthLabel, { color: textPrimary }]}>
+          {MONTH_NAMES[month]} {year}
+        </Text>
+        <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn}
+          disabled={isCurrentMonth}>
+          <Text style={[calStyles.navArrow, { color: isCurrentMonth ? border : accent }]}>›</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Day-of-week headers */}
+      <View style={calStyles.row}>
+        {DAY_LABELS.map(d => (
+          <Text key={d} style={[calStyles.dayLabel, { color: textSecondary }]}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Calendar grid */}
+      {Array.from({ length: cells.length / 7 }, (_, wi) => (
+        <View key={wi} style={calStyles.row}>
+          {cells.slice(wi * 7, wi * 7 + 7).map((day, di) => {
+            if (!day) return <View key={di} style={calStyles.cell} />;
+            const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const active  = activeSet.has(dateStr);
+            const isToday = dateStr === today.toISOString().split('T')[0];
             return (
-              <Text key={ci} style={{ width: CELL + GAP, fontSize: 7, color: '#94a3b8', textAlign: 'left' }}>
-                {show ? d.toLocaleString('default', { month: 'short' }) : ''}
-              </Text>
+              <View key={di} style={calStyles.cell}>
+                <View style={[
+                  calStyles.dayCircle,
+                  active  && { backgroundColor: accent },
+                  isToday && !active && { borderWidth: 1.5, borderColor: accent },
+                ]}>
+                  <Text style={[
+                    calStyles.dayNum,
+                    { color: active ? '#fff' : isToday ? accent : textPrimary },
+                  ]}>{day}</Text>
+                </View>
+              </View>
             );
           })}
         </View>
-        <View style={{ flexDirection: 'row', gap: GAP }}>
-          {columns.map((col, ci) => (
-            <View key={ci} style={{ flexDirection: 'column', gap: GAP }}>
-              {col.map(date => (
-                <View key={date} style={{
-                  width: CELL, height: CELL, borderRadius: 3,
-                  backgroundColor: activeSet.has(date) ? accent : 'transparent',
-                  borderWidth: activeSet.has(date) ? 0 : 1,
-                  borderColor: border,
-                }} />
-              ))}
-            </View>
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', marginTop: 6 }}>
-          {DAY_LABELS.map((l, i) => (
-            <Text key={i} style={{ width: CELL + GAP, fontSize: 7, color: '#94a3b8', fontWeight: '700' }}>{l}</Text>
-          ))}
-        </View>
-      </View>
-    </ScrollView>
+      ))}
+    </View>
   );
 }
+
+const calStyles = StyleSheet.create({
+  nav:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  navBtn:     { padding: 8 },
+  navArrow:   { fontSize: 28, fontWeight: '300', lineHeight: 28 },
+  monthLabel: { fontSize: 16, fontWeight: '800' },
+  row:        { flexDirection: 'row', marginBottom: 4 },
+  dayLabel:   { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  cell:       { flex: 1, alignItems: 'center', paddingVertical: 3 },
+  dayCircle:  { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  dayNum:     { fontSize: 13, fontWeight: '600' },
+});
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 
@@ -412,8 +448,8 @@ export default function ProfileScreen() {
 
       {/* Activity calendar */}
       <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
-        <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 16 }]}>Activity History</Text>
-        <CalendarGrid activeDates={calendarDates} weeks={12} />
+        <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 4 }]}>Activity History</Text>
+        <CalendarGrid activeDates={calendarDates} />
       </View>
 
       {/* Card color pickers */}
