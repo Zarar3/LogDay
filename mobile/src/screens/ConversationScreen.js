@@ -117,12 +117,12 @@ export default function ConversationScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <TouchableOpacity style={styles.headerCenter} onPress={() => navigation.navigate('UserProfile', { userId: friend.id })} activeOpacity={0.75}>
           <View style={[styles.avatarCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
             <Text style={styles.avatarLetter}>{friend.username[0].toUpperCase()}</Text>
           </View>
           <Text style={styles.heading}>{friend.username}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <FlatList

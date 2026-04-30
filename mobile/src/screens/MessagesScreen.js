@@ -47,9 +47,13 @@ export default function MessagesScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.row, { backgroundColor: cardBg, borderBottomColor: border }]}
             onPress={() => navigation.navigate('Conversation', { friend: item.user })}>
-            <View style={[styles.avatarCircle, { backgroundColor: accent + '22' }]}>
-              <Text style={[styles.avatarLetter, { color: accent }]}>{item.user.username[0].toUpperCase()}</Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('UserProfile', { userId: item.user.id })}
+              activeOpacity={0.7}>
+              <View style={[styles.avatarCircle, { backgroundColor: accent + '22' }]}>
+                <Text style={[styles.avatarLetter, { color: accent }]}>{item.user.username[0].toUpperCase()}</Text>
+              </View>
+            </TouchableOpacity>
             <View style={styles.rowBody}>
               <View style={styles.rowTop}>
                 <Text style={[styles.rowName, { color: textPrimary }]}>{item.user.username}</Text>
