@@ -15,6 +15,7 @@ app.use('/api/goals',      require('./routes/goals'));
 app.use('/api/messages',   require('./routes/messages'));
 app.use('/api/discover',   require('./routes/discover'));
 app.use('/api/presets',    require('./routes/presets'));
+app.use('/api/challenges', require('./routes/challenges'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

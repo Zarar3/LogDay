@@ -129,6 +129,69 @@ const pStyles = StyleSheet.create({
   hint:  { fontSize: 10, marginTop: 6 },
 });
 
+// ─── Challenge card ───────────────────────────────────────────────────────────
+function ChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, textSecondary, border }) {
+  const { isChallenger, challenger, challengee, activityType, targetSessions, deadline, myCount, theirCount } = challenge;
+  const opponent   = isChallenger ? challengee : challenger;
+  const myPct      = Math.min(1, myCount    / targetSessions);
+  const theirPct   = Math.min(1, theirCount / targetSessions);
+  const bothDone   = myCount >= targetSessions && theirCount >= targetSessions;
+  const daysLeft   = Math.max(0, Math.ceil((new Date(deadline) - new Date()) / 86400000));
+
+  return (
+    <View style={[cStyles.card, { backgroundColor: cardBg, borderColor: bothDone ? accent : border }]}>
+      <View style={cStyles.row}>
+        <Text style={[cStyles.title, { color: textPrimary }]}>⚔️ {activityType}</Text>
+        <Text style={[cStyles.deadline, { color: daysLeft <= 2 ? '#ef4444' : textSecondary }]}>
+          {daysLeft === 0 ? 'Ends today!' : `${daysLeft}d left`}
+        </Text>
+      </View>
+      <Text style={[cStyles.sub, { color: textSecondary }]}>
+        vs <Text style={{ fontWeight: '800', color: accent }}>{opponent.username}</Text>  •  {targetSessions} sessions
+      </Text>
+
+      {/* You */}
+      <View style={cStyles.barRow}>
+        <Text style={[cStyles.barLabel, { color: textSecondary }]}>You</Text>
+        <View style={[cStyles.barBg, { borderColor: border }]}>
+          <View style={[cStyles.barFill, { width: `${myPct * 100}%`, backgroundColor: accent }]} />
+        </View>
+        <Text style={[cStyles.barCount, { color: textPrimary }]}>{myCount}/{targetSessions}</Text>
+      </View>
+
+      {/* Them */}
+      <View style={cStyles.barRow}>
+        <Text style={[cStyles.barLabel, { color: textSecondary }]}>{opponent.username.slice(0, 6)}</Text>
+        <View style={[cStyles.barBg, { borderColor: border }]}>
+          <View style={[cStyles.barFill, { width: `${theirPct * 100}%`, backgroundColor: accent + '88' }]} />
+        </View>
+        <Text style={[cStyles.barCount, { color: textPrimary }]}>{theirCount}/{targetSessions}</Text>
+      </View>
+
+      {bothDone && (
+        <TouchableOpacity style={[cStyles.doneBtn, { backgroundColor: accent }]} onPress={() => onComplete(challenge.id)}>
+          <Text style={cStyles.doneBtnText}>🏆 Mark Complete</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const cStyles = StyleSheet.create({
+  card:      { borderRadius: 16, borderWidth: 1.5, padding: 14, marginBottom: 10 },
+  row:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  title:     { fontSize: 15, fontWeight: '800' },
+  deadline:  { fontSize: 12, fontWeight: '700' },
+  sub:       { fontSize: 13, marginBottom: 10 },
+  barRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  barLabel:  { width: 48, fontSize: 11, fontWeight: '700' },
+  barBg:     { flex: 1, height: 10, borderRadius: 5, borderWidth: 1, backgroundColor: 'transparent', overflow: 'hidden' },
+  barFill:   { height: '100%', borderRadius: 5 },
+  barCount:  { width: 36, fontSize: 11, fontWeight: '700', textAlign: 'right' },
+  doneBtn:   { marginTop: 8, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  doneBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+});
+
 // ─── Liquid-fill circle for overall goal progress ─────────────────────────────
 function GoalRing({ done, total, size, accent, bgColor }) {
   const pct = total === 0 ? 0 : Math.min(1, done / total);
@@ -191,6 +254,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [activeFriends, setActiveFriends] = useState([]);
   const [refreshing, setRefreshing]       = useState(false);
   const [presets, setPresets]             = useState([]);
+  const [challenges, setChallenges]       = useState([]);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   async function loadAll() {
@@ -201,6 +265,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
       api.get('/presets').then(r => setPresets(r.data)).catch(() => {}),
+      api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {}),
     ]);
   }
 
@@ -278,6 +343,14 @@ export default function HomeScreen({ navigation, onLogout }) {
     try {
       const { data } = await api.patch(`/goals/${id}/toggle`);
       setGoals(prev => prev.map(g => g.id === id ? data : g));
+    } catch {}
+  }
+
+  async function completeChallenge(id) {
+    try {
+      await api.patch(`/challenges/${id}/complete`);
+      setChallenges(prev => prev.filter(c => c.id !== id));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
   }
 
@@ -413,6 +486,24 @@ export default function HomeScreen({ navigation, onLogout }) {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {challenges.length > 0 && (
+              <View style={[styles.section, { paddingTop: 0 }]}>
+                <Text style={[styles.sectionTitle, { color: accent }]}>Challenges ⚔️</Text>
+                {challenges.map(c => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    onComplete={completeChallenge}
+                    accent={accent}
+                    cardBg={cardBg}
+                    textPrimary={textPrimary}
+                    textSecondary={textSecondary}
+                    border={border}
+                  />
+                ))}
+              </View>
+            )}
 
             <Text style={[styles.sectionTitle2, { color: accent }]}>Activities</Text>
           </>

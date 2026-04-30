@@ -154,6 +154,14 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={[styles.actionBtnOutlineText, { color: accent }]}>Compare</Text>
             </TouchableOpacity>
           )}
+          {isFriend && (
+            <TouchableOpacity
+              style={[styles.actionBtnOutline, { borderColor: accent, backgroundColor: accent + '14' }]}
+              onPress={() => navigation.navigate('NewChallenge', { friend: { id: userId, username } })}>
+              <Text style={styles.actionBtnIcon}>⚔️</Text>
+              <Text style={[styles.actionBtnOutlineText, { color: accent }]}>Challenge</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
