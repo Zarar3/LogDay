@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import api from '../api';
-import { saveToken } from '../auth';
 
 export default function RegisterScreen({ navigation, onLogin }) {
   const [email, setEmail]       = useState('');
@@ -11,8 +10,9 @@ export default function RegisterScreen({ navigation, onLogin }) {
   async function handleRegister() {
     try {
       const { data } = await api.post('/auth/register', { email, username, password });
-      await saveToken(data.token);
-      onLogin();
+      if (data.pendingVerification) {
+        navigation.navigate('VerifyEmail', { email: data.email, onLogin });
+      }
     } catch (e) {
       Alert.alert('Oops!', e.response?.data?.error || 'Registration failed');
     }
@@ -31,7 +31,7 @@ export default function RegisterScreen({ navigation, onLogin }) {
         <TextInput style={styles.input} placeholder="👤  Username" value={username}
           onChangeText={setUsername} autoCapitalize="none"
           placeholderTextColor="rgba(255,255,255,0.6)" />
-        <TextInput style={styles.input} placeholder="🔒  Password" value={password}
+        <TextInput style={styles.input} placeholder="🔒  Password (min 6 chars)" value={password}
           onChangeText={setPassword} secureTextEntry
           placeholderTextColor="rgba(255,255,255,0.6)" />
 

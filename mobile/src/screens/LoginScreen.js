@@ -13,7 +13,22 @@ export default function LoginScreen({ navigation, onLogin }) {
       await saveToken(data.token);
       onLogin();
     } catch (e) {
-      Alert.alert('Oops!', e.response?.data?.error || 'Login failed');
+      const err = e.response?.data;
+      if (err?.notVerified) {
+        Alert.alert(
+          'Email not verified',
+          'Please verify your email before signing in.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Enter code',
+              onPress: () => navigation.navigate('VerifyEmail', { email: err.email, onLogin }),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Oops!', err?.error || 'Login failed');
+      }
     }
   }
 

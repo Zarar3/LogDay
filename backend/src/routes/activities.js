@@ -154,6 +154,39 @@ router.get('/weekly-summary', auth, async (req, res) => {
   });
 });
 
+// GET /api/activities/type-streaks  — consecutive-day streak per activity type
+router.get('/type-streaks', auth, async (req, res) => {
+  const acts = await prisma.activity.findMany({
+    where:   { userId: req.user.id },
+    select:  { type: true, date: true },
+    orderBy: { date: 'desc' },
+  });
+
+  const byType = {};
+  acts.forEach(a => {
+    if (!byType[a.type]) byType[a.type] = new Set();
+    byType[a.type].add(a.date);
+  });
+
+  const results = [];
+  for (const [type, dateSet] of Object.entries(byType)) {
+    const dates = [...dateSet].sort().reverse(); // newest first
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split('T')[0];
+      if (dateSet.has(ds)) streak++;
+      else break;
+    }
+    if (streak > 0) results.push({ type, streak });
+  }
+
+  results.sort((a, b) => b.streak - a.streak);
+  res.json(results);
+});
+
 // GET /api/activities/streak  — before /:id routes
 router.get('/streak', auth, async (req, res) => {
   const streak = await getStreak(req.user.id);
@@ -188,6 +221,26 @@ router.get('/user/:userId', auth, async (req, res) => {
     include: activityInclude(req.user.id),
   });
   res.json(activities.map(fmt));
+});
+
+// PUT /api/activities/:id
+router.put('/:id', auth, async (req, res) => {
+  const { type, duration, notes, date, imageBase64 } = req.body;
+  const activity = await prisma.activity.findUnique({ where: { id: req.params.id } });
+  if (!activity || activity.userId !== req.user.id)
+    return res.status(404).json({ error: 'Activity not found' });
+
+  const updated = await prisma.activity.update({
+    where: { id: req.params.id },
+    data: {
+      ...(type        !== undefined && { type }),
+      ...(duration    !== undefined && { duration: duration ? parseInt(duration) : null }),
+      ...(notes       !== undefined && { notes }),
+      ...(date        !== undefined && { date }),
+      ...(imageBase64 !== undefined && { imageBase64 }),
+    },
+  });
+  res.json(updated);
 });
 
 // DELETE /api/activities/:id

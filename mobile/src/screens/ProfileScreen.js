@@ -309,14 +309,13 @@ export default function ProfileScreen() {
 
   async function loadAll() {
     try {
-      const [meRes, streakRes, actsRes, friendsRes, calRes, badgesRes, tsRes] = await Promise.all([
+      const [meRes, streakRes, actsRes, friendsRes, calRes, badgesRes] = await Promise.all([
         api.get('/auth/me'),
         api.get('/activities/streak'),
         api.get('/activities'),
         api.get('/friends'),
         api.get('/activities/calendar?weeks=12'),
         api.get('/auth/badges'),
-        api.get('/activities/type-streaks'),
       ]);
       const me = meRes.data;
       setUser(me);
@@ -326,7 +325,6 @@ export default function ProfileScreen() {
       if (me.cardSecondaryColor) setSecondary(me.cardSecondaryColor);
       setIsPublic(me.isPublic !== false);
       setCalendar(calRes.data.activeDates);
-      setTypeStreaks(tsRes.data);
       setBadges(badgesRes.data);
       checkNewBadges(badgesRes.data);
       const allActs = actsRes.data;
@@ -335,6 +333,8 @@ export default function ProfileScreen() {
       allActs.forEach(a => { counts[a.type] = (counts[a.type] || 0) + 1; });
       setTop(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4));
     } catch {}
+    // Separate so a missing endpoint doesn't block the whole screen
+    api.get('/activities/type-streaks').then(r => setTypeStreaks(r.data)).catch(() => {});
   }
 
   async function pickAvatar() {

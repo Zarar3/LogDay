@@ -16,6 +16,9 @@ model User {
   cardColor          String?
   cardSecondaryColor String?
   isPublic           Boolean  @default(true)
+  emailVerified      Boolean  @default(false)
+  emailVerifyCode    String?
+  emailVerifyExpiry  DateTime?
   createdAt          DateTime @default(now())
 
   activities       Activity[]

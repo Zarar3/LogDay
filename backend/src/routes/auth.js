@@ -3,6 +3,15 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const prisma  = require('../prisma');
 const { computeBadges } = require('../utils/badges');
+const { sendVerificationEmail } = require('../utils/email');
+
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -11,6 +20,15 @@ router.post('/register', async (req, res) => {
   if (!email || !username || !password)
     return res.status(400).json({ error: 'All fields are required' });
 
+  if (!isValidEmail(email))
+    return res.status(400).json({ error: 'Please enter a valid email address' });
+
+  if (username.length < 3)
+    return res.status(400).json({ error: 'Username must be at least 3 characters' });
+
+  if (password.length < 6)
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
   const exists = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] }
   });
@@ -18,12 +36,72 @@ router.post('/register', async (req, res) => {
     return res.status(409).json({ error: 'Email or username already taken' });
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { email, username, passwordHash }
+  const code    = generateCode();
+  const expiry  = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+  await prisma.user.create({
+    data: { email, username, passwordHash, emailVerifyCode: code, emailVerifyExpiry: expiry },
+  });
+
+  try {
+    await sendVerificationEmail(email, code);
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+    // Still return success — user can resend
+  }
+
+  res.status(201).json({ pendingVerification: true, email });
+});
+
+// POST /api/auth/verify-email
+router.post('/verify-email', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+  if (user.emailVerified) return res.status(400).json({ error: 'Email already verified' });
+
+  if (!user.emailVerifyCode || user.emailVerifyCode !== code)
+    return res.status(400).json({ error: 'Invalid verification code' });
+
+  if (!user.emailVerifyExpiry || new Date() > user.emailVerifyExpiry)
+    return res.status(400).json({ error: 'Code has expired — please request a new one' });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data:  { emailVerified: true, emailVerifyCode: null, emailVerifyExpiry: null },
   });
 
   const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.status(201).json({ token, user: { id: user.id, email: user.email, username: user.username } });
+  res.json({ token, user: { id: user.id, email: user.email, username: user.username } });
+});
+
+// POST /api/auth/resend-code
+router.post('/resend-code', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return res.status(404).json({ error: 'Account not found' });
+  if (user.emailVerified) return res.status(400).json({ error: 'Email already verified' });
+
+  const code   = generateCode();
+  const expiry = new Date(Date.now() + 15 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data:  { emailVerifyCode: code, emailVerifyExpiry: expiry },
+  });
+
+  try {
+    await sendVerificationEmail(email, code);
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+    return res.status(500).json({ error: 'Could not send email — check server email config' });
+  }
+
+  res.json({ sent: true });
 });
 
 // POST /api/auth/login
@@ -35,6 +113,9 @@ router.post('/login', async (req, res) => {
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+  if (!user.emailVerified)
+    return res.status(403).json({ error: 'Please verify your email before signing in', notVerified: true, email });
 
   const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { id: user.id, email: user.email, username: user.username } });

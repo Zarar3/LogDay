@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 
 import LoginScreen        from '../screens/LoginScreen';
 import RegisterScreen     from '../screens/RegisterScreen';
+import VerifyEmailScreen  from '../screens/VerifyEmailScreen';
 import HomeScreen         from '../screens/HomeScreen';
 import LogActivityScreen  from '../screens/LogActivityScreen';
 import FriendsScreen      from '../screens/FriendsScreen';
@@ -129,6 +130,9 @@ export default function AppNavigator() {
             </Stack.Screen>
             <Stack.Screen name="Register">
               {props => <RegisterScreen {...props} onLogin={() => setLoggedIn(true)} />}
+            </Stack.Screen>
+            <Stack.Screen name="VerifyEmail">
+              {props => <VerifyEmailScreen {...props} onLogin={() => setLoggedIn(true)} />}
             </Stack.Screen>
           </>
         )}

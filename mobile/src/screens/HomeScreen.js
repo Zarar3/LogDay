@@ -79,7 +79,7 @@ function ActiveStrip({ friends, onPress }) {
 }
 
 const stripStyles = StyleSheet.create({
-  wrap:        { marginTop: 16, marginBottom: 20, paddingHorizontal: 16 },
+  wrap:        { marginTop: 8, marginBottom: 12, paddingHorizontal: 16 },
   label:       { fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
                  textTransform: 'uppercase', marginBottom: 12 },
   row:         { gap: 20, paddingRight: 8 },
@@ -447,27 +447,29 @@ export default function HomeScreen({ navigation, onLogout }) {
               onDelete={deletePreset}
             />
 
-            <View style={[styles.statsRow, { backgroundColor: statsBg, borderBottomColor: border }]}>
-              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
+            <View style={[styles.statsRow, { backgroundColor: statsBg }]}>
+              <View style={styles.statCard}>
                 <Animated.View style={{ transform: [{ scale: flameScale }], alignItems: 'center' }}>
                   <Text style={styles.statEmoji}>🔥</Text>
                   <Text style={[styles.statNum, { color: accent }]}>{streak}</Text>
                 </Animated.View>
                 <Text style={[styles.statLabel, { color: textSecondary }]}>day streak</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
+              <View style={[styles.statDivider, { backgroundColor: border }]} />
+              <View style={styles.statCard}>
                 <Text style={styles.statEmoji}>📋</Text>
                 <Text style={[styles.statNum, { color: accent }]}>{activities.length}</Text>
                 <Text style={[styles.statLabel, { color: textSecondary }]}>logged</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <GoalRing done={doneCount} total={goals.length} size={52} accent={accent} bgColor={cardBg} />
+              <View style={[styles.statDivider, { backgroundColor: border }]} />
+              <View style={styles.statCard}>
+                <GoalRing done={doneCount} total={goals.length} size={44} accent={accent} bgColor={cardBg} />
                 <Text style={[styles.statLabel, { color: textSecondary, marginTop: 4 }]}>goals</Text>
               </View>
             </View>
 
-            <View style={[styles.reflectionBox, { backgroundColor: isDark ? '#1a2744' : '#eff6ff', borderColor: border }]}>
-              <Text style={[styles.reflectionText, { color: accent }]}>{reflection}</Text>
+            <View style={[styles.reflectionBox, { borderLeftColor: accent }]}>
+              <Text style={[styles.reflectionText, { color: textSecondary }]}>{reflection}</Text>
             </View>
 
             {/* Goals section */}
@@ -643,50 +645,51 @@ export default function HomeScreen({ navigation, onLogout }) {
 
 const styles = StyleSheet.create({
   container:     { flex: 1 },
-  header:        { padding: 24, paddingTop: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  greeting:      { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 2 },
-  heading:       { fontSize: 26, fontWeight: '800', color: '#fff' },
-  date:          { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 2 },
+  header:        { padding: 18, paddingTop: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  greeting:      { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginBottom: 2 },
+  heading:       { fontSize: 22, fontWeight: '800', color: '#fff' },
+  date:          { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
   logoutBtn:     { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 4 },
   logoutText:    { color: '#fff', fontSize: 13, fontWeight: '600' },
   list:          { paddingBottom: 100 },
-  statsRow:      { flexDirection: 'row', padding: 12, gap: 8, borderBottomWidth: 1 },
-  statCard:      { flex: 1, borderRadius: 14, padding: 10, alignItems: 'center', borderWidth: 1.5, shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  statEmoji:     { fontSize: 18 },
-  statNum:       { fontSize: 18, fontWeight: '900' },
-  statLabel:     { fontSize: 10, fontWeight: '600' },
-  reflectionBox: { margin: 12, marginBottom: 4, borderRadius: 14, padding: 14, borderWidth: 1.5 },
-  reflectionText:{ fontWeight: '600', fontSize: 13, fontStyle: 'italic', lineHeight: 20 },
-  section:       { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
-  sectionTitle:  { fontWeight: '800', fontSize: 15, marginBottom: 10 },
-  sectionTitle2: { fontWeight: '800', fontSize: 15, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
+  statsRow:      { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 12 },
+  statCard:      { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  statDivider:   { width: 1, marginVertical: 8 },
+  statEmoji:     { fontSize: 16 },
+  statNum:       { fontSize: 22, fontWeight: '900' },
+  statLabel:     { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  reflectionBox: { marginHorizontal: 16, marginVertical: 8, borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
+  reflectionText:{ fontWeight: '500', fontSize: 13, fontStyle: 'italic', lineHeight: 20 },
+  section:       { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  sectionTitle:  { fontWeight: '800', fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8, opacity: 0.55 },
+  sectionTitle2: { fontWeight: '800', fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4, opacity: 0.55 },
   groupLabel:    { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
-  noGoals:       { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
-  goalRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 12, marginBottom: 8, borderWidth: 1.5, gap: 10 },
+  noGoals:       { fontSize: 13, fontStyle: 'italic', marginBottom: 10 },
+  goalRow:       { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 10, marginBottom: 6, borderWidth: 1, gap: 10 },
   circleWrap:    { width: 30, alignItems: 'center' },
   goalText:      { fontSize: 14, fontWeight: '600' },
   goalTextDone:  { textDecorationLine: 'line-through', opacity: 0.5 },
   motivate:      { fontSize: 12, fontWeight: '700', marginTop: 2 },
   deadline:      { fontSize: 11, marginTop: 2, fontWeight: '600' },
   goalDelete:    { color: '#94a3b8', fontSize: 16, paddingLeft: 4 },
-  presetRow:     { flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
-  preset:        { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
-  presetText:    { fontSize: 11, fontWeight: '700' },
+  presetRow:     { flexDirection: 'row', gap: 4, marginBottom: 6, flexWrap: 'wrap' },
+  preset:        { borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  presetText:    { fontSize: 10, fontWeight: '700' },
   goalInputRow:  { flexDirection: 'row', gap: 8, marginTop: 2 },
-  goalInput:     { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
+  goalInput:     { flex: 1, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14 },
   goalAddBtn:    { borderRadius: 12, width: 44, justifyContent: 'center', alignItems: 'center' },
   goalAddText:   { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26 },
-  card:          { borderRadius: 20, marginHorizontal: 12, marginBottom: 12, borderWidth: 1, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
+  card:          { borderRadius: 16, marginHorizontal: 12, marginBottom: 8, borderWidth: 1, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
   cardImage:     { width: '100%', height: 180 },
-  cardBody:      { flexDirection: 'row', alignItems: 'center', padding: 14, paddingBottom: 8 },
-  iconBadge:     { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  cardIcon:      { fontSize: 26 },
+  cardBody:      { flexDirection: 'row', alignItems: 'center', padding: 12, paddingBottom: 6 },
+  iconBadge:     { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  cardIcon:      { fontSize: 22 },
   cardLeft:      { flex: 1 },
-  type:          { fontSize: 16, fontWeight: '700' },
+  type:          { fontSize: 15, fontWeight: '700' },
   meta:          { fontSize: 13, marginTop: 2 },
   notes:         { fontSize: 13, marginTop: 2 },
   delete:        { color: '#94a3b8', fontSize: 18, paddingLeft: 12 },
-  cardActions:   { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 12, gap: 16 },
+  cardActions:   { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 10, gap: 14 },
   actionBtn:     { flexDirection: 'row', alignItems: 'center' },
   actionText:    { fontSize: 14, fontWeight: '600' },
   emptyBox:      { alignItems: 'center', marginTop: 24, paddingHorizontal: 12 },
@@ -695,21 +698,21 @@ const styles = StyleSheet.create({
   emptySubText:  { fontSize: 14, marginTop: 4 },
   fab:           { position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 },
   fabText:       { color: '#fff', fontWeight: '800', fontSize: 16 },
-  seeMoreBtn:    { marginHorizontal: 12, marginBottom: 16, paddingVertical: 12, borderRadius: 14,
-                   borderWidth: 1.5, alignItems: 'center' },
+  seeMoreBtn:    { marginHorizontal: 12, marginBottom: 16, paddingVertical: 10, borderRadius: 14,
+                   borderWidth: 1, alignItems: 'center' },
   seeMoreText:   { fontWeight: '700', fontSize: 14 },
 });
 
 const wStyles = StyleSheet.create({
-  card:       { marginHorizontal: 12, marginBottom: 10, borderRadius: 16, borderWidth: 1.5,
-                padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  card:       { marginHorizontal: 12, marginBottom: 8, borderRadius: 16, borderWidth: 1,
+                padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   left:       { flex: 1 },
-  label:      { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
-  sessions:   { fontSize: 22, fontWeight: '900', marginBottom: 2 },
+  label:      { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4, opacity: 0.55 },
+  sessions:   { fontSize: 20, fontWeight: '900', marginBottom: 2 },
   top:        { fontSize: 12, fontWeight: '600' },
-  right:      { alignItems: 'flex-end', gap: 8 },
-  streak:     { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  streakNum:  { fontSize: 15, fontWeight: '900' },
+  right:      { alignItems: 'flex-end', gap: 6 },
+  streak:     { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' },
+  streakNum:  { fontSize: 14, fontWeight: '900' },
   streakLbl:  { fontSize: 10, fontWeight: '600' },
   cta:        { fontSize: 13, fontWeight: '800' },
 });
