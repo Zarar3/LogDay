@@ -2,8 +2,28 @@ import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
-export default function SwipeableCard({ onDelete, children }) {
+export default function SwipeableCard({ onDelete, onEdit, children }) {
   const swipeRef = useRef(null);
+
+  function renderLeftActions(progress, dragX) {
+    const scale = dragX.interpolate({
+      inputRange: [0, 80],
+      outputRange: [0.8, 1],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity
+        style={styles.editAction}
+        onPress={() => {
+          swipeRef.current?.close();
+          onEdit?.();
+        }}>
+        <Animated.Text style={[styles.actionText, { transform: [{ scale }] }]}>
+          ✏️{'\n'}Edit
+        </Animated.Text>
+      </TouchableOpacity>
+    );
+  }
 
   function renderRightActions(progress, dragX) {
     const scale = dragX.interpolate({
@@ -18,7 +38,7 @@ export default function SwipeableCard({ onDelete, children }) {
           swipeRef.current?.close();
           onDelete();
         }}>
-        <Animated.Text style={[styles.deleteText, { transform: [{ scale }] }]}>
+        <Animated.Text style={[styles.actionText, { transform: [{ scale }] }]}>
           🗑️{'\n'}Delete
         </Animated.Text>
       </TouchableOpacity>
@@ -28,16 +48,29 @@ export default function SwipeableCard({ onDelete, children }) {
   return (
     <Swipeable
       ref={swipeRef}
+      renderLeftActions={onEdit ? renderLeftActions : undefined}
       renderRightActions={renderRightActions}
+      leftThreshold={40}
       rightThreshold={40}
       friction={2}
-      overshootRight={false}>
+      overshootRight={false}
+      overshootLeft={false}>
       {children}
     </Swipeable>
   );
 }
 
 const styles = StyleSheet.create({
+  editAction: {
+    backgroundColor: '#6366f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 12,
+    marginLeft: 12,
+  },
   deleteAction: {
     backgroundColor: '#ef4444',
     justifyContent: 'center',
@@ -48,5 +81,5 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginRight: 12,
   },
-  deleteText: { color: '#fff', fontWeight: '800', fontSize: 12, textAlign: 'center' },
+  actionText: { color: '#fff', fontWeight: '800', fontSize: 12, textAlign: 'center' },
 });

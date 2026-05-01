@@ -31,11 +31,16 @@ export default function DiscoverScreen({ navigation }) {
   const [query, setQuery]           = useState('');
   const [searchResults, setResults] = useState([]);
   const [searching, setSearching]   = useState(false);
+  const [myId, setMyId]             = useState(null);
+  const [cheeredIds, setCheered]    = useState(new Set());
   const publicOffset  = useRef(0);
   const freshingRef   = useRef(false);
   const debounceTimer = useRef(null);
 
-  useFocusEffect(useCallback(() => { loadFresh(); }, []));
+  useFocusEffect(useCallback(() => {
+    loadFresh();
+    api.get('/auth/me').then(r => setMyId(r.data.id)).catch(() => {});
+  }, []));
 
   async function loadFresh() {
     freshingRef.current = true;
@@ -80,6 +85,18 @@ export default function DiscoverScreen({ navigation }) {
         p.id === id ? { ...p, isLiked: liked, likeCount: p.likeCount + (liked ? 1 : -1) } : p
       ));
     }
+  }
+
+  async function sendCheer(item) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCheered(prev => new Set([...prev, item.id]));
+    const CHEERS = [
+      `💪 Crushed that ${item.type} session! Keep it up!`,
+      `🔥 ${item.type}? Let's go! You're on fire!`,
+      `⭐ Nice ${item.type} — you're killing it!`,
+    ];
+    const msg = CHEERS[item.id.charCodeAt(0) % CHEERS.length];
+    try { await api.post(`/messages/${item.userId}`, { text: msg }); } catch {}
   }
 
   function onQueryChange(text) {
@@ -203,6 +220,16 @@ export default function DiscoverScreen({ navigation }) {
                 onPress={() => navigation.navigate('Comments', { activityId: item.id, activityType: item.type })}>
                 <Text style={[styles.actionText, { color: textSecondary }]}>💬 {item.commentCount}</Text>
               </TouchableOpacity>
+              {item.userId !== myId && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.cheerBtn, cheeredIds.has(item.id) && { backgroundColor: accent + '22' }]}
+                  onPress={() => !cheeredIds.has(item.id) && sendCheer(item)}
+                  disabled={cheeredIds.has(item.id)}>
+                  <Text style={[styles.actionText, { color: cheeredIds.has(item.id) ? accent : textSecondary }]}>
+                    {cheeredIds.has(item.id) ? '✅ Cheered' : '💪 Cheer'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -243,7 +270,8 @@ const styles = StyleSheet.create({
   prBadgeText:  { fontSize: 11, fontWeight: '800', color: '#92400e' },
   actMeta:      { fontSize: 13, marginTop: 3 },
   actNotes:     { fontSize: 13, marginTop: 3 },
-  cardActions:  { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 14, gap: 20 },
+  cardActions:  { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 14, gap: 16, flexWrap: 'wrap' },
   actionBtn:    { flexDirection: 'row', alignItems: 'center' },
+  cheerBtn:     { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   actionText:   { fontSize: 15, fontWeight: '600' },
 });

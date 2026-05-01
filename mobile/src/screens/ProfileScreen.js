@@ -299,6 +299,7 @@ export default function ProfileScreen() {
   const [secondary, setSecondary]     = useState(DEFAULT_SECONDARY);
   const [isPublic, setIsPublic]       = useState(true);
   const [calendarDates, setCalendar]  = useState([]);
+  const [typeStreaks, setTypeStreaks]  = useState([]);
   const [badges, setBadges]           = useState([]);
 
   const saveTimer = useRef({});
@@ -308,13 +309,14 @@ export default function ProfileScreen() {
 
   async function loadAll() {
     try {
-      const [meRes, streakRes, actsRes, friendsRes, calRes, badgesRes] = await Promise.all([
+      const [meRes, streakRes, actsRes, friendsRes, calRes, badgesRes, tsRes] = await Promise.all([
         api.get('/auth/me'),
         api.get('/activities/streak'),
         api.get('/activities'),
         api.get('/friends'),
         api.get('/activities/calendar?weeks=12'),
         api.get('/auth/badges'),
+        api.get('/activities/type-streaks'),
       ]);
       const me = meRes.data;
       setUser(me);
@@ -324,6 +326,7 @@ export default function ProfileScreen() {
       if (me.cardSecondaryColor) setSecondary(me.cardSecondaryColor);
       setIsPublic(me.isPublic !== false);
       setCalendar(calRes.data.activeDates);
+      setTypeStreaks(tsRes.data);
       setBadges(badgesRes.data);
       checkNewBadges(badgesRes.data);
       const allActs = actsRes.data;
@@ -506,6 +509,22 @@ export default function ProfileScreen() {
         <CalendarGrid activeDates={calendarDates} />
       </View>
 
+      {/* Per-type streaks */}
+      {typeStreaks.length > 0 && (
+        <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
+          <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 14 }]}>Active Streaks 🔥</Text>
+          {typeStreaks.map(({ type, streak }) => (
+            <View key={type} style={tsStyles.row}>
+              <Text style={[tsStyles.type, { color: textPrimary }]}>{type}</Text>
+              <View style={[tsStyles.bar, { backgroundColor: appAccent + '18' }]}>
+                <View style={[tsStyles.fill, { width: `${Math.min(100, streak / 14 * 100)}%`, backgroundColor: appAccent }]} />
+              </View>
+              <Text style={[tsStyles.num, { color: appAccent }]}>{streak}d</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Card color pickers */}
       <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
         <Text style={[styles.sectionHeader, { color: textPrimary }]}>Card Colors</Text>
@@ -676,6 +695,14 @@ const styles = StyleSheet.create({
   privacyKnob:      { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
                       shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
                       shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 },
+});
+
+const tsStyles = StyleSheet.create({
+  row:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  type: { width: 80, fontSize: 13, fontWeight: '700' },
+  bar:  { flex: 1, height: 12, borderRadius: 6, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 6 },
+  num:  { width: 32, fontSize: 13, fontWeight: '800', textAlign: 'right' },
 });
 
 const shareStyles = StyleSheet.create({

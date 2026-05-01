@@ -27,14 +27,33 @@ function todayDate() {
   return new Date().toISOString().split('T')[0];
 }
 
-export default function LogActivityScreen({ navigation }) {
+function getDateOptions() {
+  return [0, 1, 2, 3].map(offset => {
+    const d = new Date();
+    d.setDate(d.getDate() - offset);
+    const dateStr = d.toISOString().split('T')[0];
+    return {
+      label: offset === 0 ? 'Today' : offset === 1 ? 'Yesterday' : `${offset} days ago`,
+      date: dateStr,
+    };
+  });
+}
+
+export default function LogActivityScreen({ navigation, route }) {
+  const editActivity = route?.params?.activity || null;
   const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
-  const [type, setType]               = useState('');
-  const [duration, setDuration]       = useState('');
-  const [notes, setNotes]             = useState('');
-  const [imageBase64, setImageBase64] = useState(null);
-  const [imageUri, setImageUri]       = useState(null);
+
+  const [type, setType]               = useState(editActivity?.type || '');
+  const [duration, setDuration]       = useState(editActivity?.duration?.toString() || '');
+  const [notes, setNotes]             = useState(editActivity?.notes || '');
+  const [imageBase64, setImageBase64] = useState(editActivity?.imageBase64 || null);
+  const [imageUri, setImageUri]       = useState(
+    editActivity?.imageBase64 ? `data:image/jpeg;base64,${editActivity.imageBase64}` : null
+  );
+  const [date, setDate]               = useState(editActivity?.date || todayDate());
   const [custom, setCustom]           = useState([]);
+
+  const dateOptions = getDateOptions();
 
   useEffect(() => {
     AsyncStorage.getItem(CUSTOM_KEY)
@@ -79,27 +98,40 @@ export default function LogActivityScreen({ navigation }) {
   async function handleSubmit() {
     if (!type.trim()) return Alert.alert('Hold on ✋', 'Activity type is required');
     try {
-      const { data } = await api.post('/activities', {
-        type: type.trim(),
-        duration: duration ? parseInt(duration) : null,
-        notes: notes.trim() || null,
-        date: todayDate(),
-        imageBase64: imageBase64 || null,
-      });
-      if (data.isPR) {
-        Alert.alert('🏆 New Personal Record!', `Best ${type.trim()} session ever — ${duration} minutes!`);
-      }
-      Alert.alert('Logged! 🎯', 'Save as a quick-log preset?', [
-        { text: 'No thanks', style: 'cancel', onPress: () => navigation.goBack() },
-        {
-          text: 'Save Preset',
-          onPress: async () => {
-            const name = `${type.trim()}${duration ? ` ${duration}m` : ''}`;
-            await api.post('/presets', { name, type: type.trim(), duration: duration ? parseInt(duration) : null, notes: notes.trim() || null }).catch(() => {});
-            navigation.goBack();
+      if (editActivity) {
+        await api.put(`/activities/${editActivity.id}`, {
+          type: type.trim(),
+          duration: duration ? parseInt(duration) : null,
+          notes: notes.trim() || null,
+          date,
+          imageBase64: imageBase64 || null,
+        });
+        Alert.alert('Updated! ✅', 'Activity saved.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        const { data } = await api.post('/activities', {
+          type: type.trim(),
+          duration: duration ? parseInt(duration) : null,
+          notes: notes.trim() || null,
+          date,
+          imageBase64: imageBase64 || null,
+        });
+        if (data.isPR) {
+          Alert.alert('🏆 New Personal Record!', `Best ${type.trim()} session ever — ${duration} minutes!`);
+        }
+        Alert.alert('Logged! 🎯', 'Save as a quick-log preset?', [
+          { text: 'No thanks', style: 'cancel', onPress: () => navigation.goBack() },
+          {
+            text: 'Save Preset',
+            onPress: async () => {
+              const name = `${type.trim()}${duration ? ` ${duration}m` : ''}`;
+              await api.post('/presets', { name, type: type.trim(), duration: duration ? parseInt(duration) : null, notes: notes.trim() || null }).catch(() => {});
+              navigation.goBack();
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } catch {
       Alert.alert('Error', 'Could not save activity');
     }
@@ -115,8 +147,29 @@ export default function LogActivityScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.back, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={[styles.heading, { color: textPrimary }]}>Log an Activity ✏️</Text>
+        <Text style={[styles.heading, { color: textPrimary }]}>
+          {editActivity ? 'Edit Activity ✏️' : 'Log an Activity ✏️'}
+        </Text>
       </View>
+
+      {/* Date selector */}
+      <Text style={[styles.label, { color: textPrimary }]}>Date 📅</Text>
+      <View style={styles.chips}>
+        {dateOptions.map(opt => (
+          <TouchableOpacity
+            key={opt.date}
+            style={[styles.chip, { backgroundColor: cardBg, borderColor: border }, date === opt.date && { backgroundColor: accent, borderColor: accent }]}
+            onPress={() => setDate(opt.date)}>
+            <Text style={[styles.chipText, { color: textSecondary }, date === opt.date && { color: '#fff' }]}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {/* Show selected date if not one of the 4 options */}
+      {!dateOptions.some(o => o.date === date) && (
+        <Text style={[styles.customDateLabel, { color: accent }]}>Selected: {date}</Text>
+      )}
 
       <Text style={[styles.label, { color: textPrimary }]}>What did you do? 🤔</Text>
       <View style={styles.typeRow}>
@@ -202,38 +255,39 @@ export default function LogActivityScreen({ navigation }) {
       )}
 
       <TouchableOpacity style={[styles.button, { backgroundColor: accent, shadowColor: accent }]} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Save Activity 🎯</Text>
+        <Text style={styles.buttonText}>{editActivity ? 'Save Changes ✅' : 'Save Activity 🎯'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:      { flex: 1 },
-  content:        { padding: 24, paddingBottom: 48 },
-  header:         { marginTop: 40, marginBottom: 24 },
-  back:           { fontSize: 16, fontWeight: '600', marginBottom: 12 },
-  heading:        { fontSize: 28, fontWeight: '800' },
-  label:          { fontWeight: '700', marginBottom: 8, marginTop: 20 },
-  customLabel:    { fontWeight: '700', marginBottom: 8, marginTop: 12, fontSize: 13 },
-  typeRow:        { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  input:          { borderWidth: 1.5, borderRadius: 14, padding: 14, fontSize: 15 },
-  textarea:       { height: 90, textAlignVertical: 'top' },
-  saveChipBtn:    { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  saveChipText:   { color: '#fff', fontWeight: '700', fontSize: 13 },
-  chips:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  chip:           { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                    borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  chipText:       { fontWeight: '600', fontSize: 13 },
-  chipDeleteBtn:  { marginLeft: 2 },
-  chipDeleteText: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
-  photoBtn:       { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 14, padding: 20,
-                    alignItems: 'center', marginTop: 4 },
-  photoBtnText:   { fontWeight: '700', fontSize: 15 },
-  preview:        { width: '100%', height: 200, borderRadius: 14, marginTop: 4 },
-  removePhoto:    { alignItems: 'center', marginTop: 8 },
-  removePhotoText:{ color: '#94a3b8', fontWeight: '600', fontSize: 13 },
-  button:         { padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 32,
-                    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6 },
-  buttonText:     { color: '#fff', fontWeight: '800', fontSize: 16 },
+  container:       { flex: 1 },
+  content:         { padding: 24, paddingBottom: 48 },
+  header:          { marginTop: 40, marginBottom: 24 },
+  back:            { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+  heading:         { fontSize: 28, fontWeight: '800' },
+  label:           { fontWeight: '700', marginBottom: 8, marginTop: 20 },
+  customLabel:     { fontWeight: '700', marginBottom: 8, marginTop: 12, fontSize: 13 },
+  customDateLabel: { fontSize: 12, fontWeight: '600', marginTop: 6 },
+  typeRow:         { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  input:           { borderWidth: 1.5, borderRadius: 14, padding: 14, fontSize: 15 },
+  textarea:        { height: 90, textAlignVertical: 'top' },
+  saveChipBtn:     { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
+  saveChipText:    { color: '#fff', fontWeight: '700', fontSize: 13 },
+  chips:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  chip:            { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                     borderWidth: 1.5, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  chipText:        { fontWeight: '600', fontSize: 13 },
+  chipDeleteBtn:   { marginLeft: 2 },
+  chipDeleteText:  { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
+  photoBtn:        { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 14, padding: 20,
+                     alignItems: 'center', marginTop: 4 },
+  photoBtnText:    { fontWeight: '700', fontSize: 15 },
+  preview:         { width: '100%', height: 200, borderRadius: 14, marginTop: 4 },
+  removePhoto:     { alignItems: 'center', marginTop: 8 },
+  removePhotoText: { color: '#94a3b8', fontWeight: '600', fontSize: 13 },
+  button:          { padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 32,
+                     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6 },
+  buttonText:      { color: '#fff', fontWeight: '800', fontSize: 16 },
 });

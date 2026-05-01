@@ -580,7 +580,9 @@ export default function HomeScreen({ navigation, onLogout }) {
           </View>
         }
         renderItem={({ item }) => (
-          <SwipeableCard onDelete={() => confirmDelete(item.id)}>
+          <SwipeableCard
+            onDelete={() => confirmDelete(item.id)}
+            onEdit={() => navigation.navigate('LogActivity', { activity: item })}>
             <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
               {item.imageBase64 ? (
                 <TouchableOpacity onPress={() => setViewerUri(`data:image/jpeg;base64,${item.imageBase64}`)}>
