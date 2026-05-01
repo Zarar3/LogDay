@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, RefreshControl } from 'react-native';
+import EmptyState from '../components/EmptyState';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -70,22 +71,26 @@ export default function FriendsScreen({ navigation }) {
               </View>
             </View>
 
-            {requests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: accent }]}>Pending Requests 📬</Text>
-                {requests.map(r => (
-                  <View key={r.id} style={[styles.requestCard, { backgroundColor: cardBg, borderColor: border }]}>
-                    <Text style={[styles.requestName, { color: textPrimary }]}>👤 {r.sender.username}</Text>
-                    <TouchableOpacity onPress={() => acceptRequest(r.id)} style={[styles.acceptBtn, { backgroundColor: accent }]}>
-                      <Text style={styles.acceptText}>✓ Accept</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => rejectRequest(r.id)}>
-                      <Text style={styles.rejectText}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: accent }]}>Pending Requests 📬</Text>
+              {requests.length === 0 ? (
+                <EmptyState
+                  emoji="🤝"
+                  title="No pending requests"
+                  subtitle="When someone sends you a friend request, it'll appear here."
+                />
+              ) : requests.map(r => (
+                <View key={r.id} style={[styles.requestCard, { backgroundColor: cardBg, borderColor: border }]}>
+                  <Text style={[styles.requestName, { color: textPrimary }]}>👤 {r.sender.username}</Text>
+                  <TouchableOpacity onPress={() => acceptRequest(r.id)} style={[styles.acceptBtn, { backgroundColor: accent }]}>
+                    <Text style={styles.acceptText}>✓ Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => rejectRequest(r.id)}>
+                    <Text style={styles.rejectText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
 
             {leaderboard.length > 0 && (
               <View style={styles.section}>
@@ -104,7 +109,7 @@ export default function FriendsScreen({ navigation }) {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: accent }]}>Your Friends</Text>
               {friends.length === 0
-                ? <Text style={[styles.empty, { color: textSecondary }]}>No friends yet — add some! 👆</Text>
+                ? <EmptyState emoji="👥" title="No friends yet" subtitle="Search for people you know and send them a friend request." />
                 : friends.map(item => (
                   <View key={item.id} style={[styles.friendCard, { backgroundColor: cardBg, borderColor: border }]}>
                     <Text style={[styles.friendName, { color: textPrimary }]}>👤 {item.username}</Text>
@@ -150,5 +155,4 @@ const styles = StyleSheet.create({
   msgBtn:       { paddingHorizontal: 10 },
   msgBtnText:   { fontSize: 18 },
   compareText:  { fontWeight: '700' },
-  empty:        { textAlign: 'center', marginTop: 20, fontSize: 14 },
 });

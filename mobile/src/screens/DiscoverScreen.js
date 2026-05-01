@@ -5,6 +5,7 @@ import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 import ImageViewer from '../components/ImageViewer';
 import LikeButton from '../components/LikeButton';
+import EmptyState from '../components/EmptyState';
 import * as Haptics from 'expo-haptics';
 
 function timeAgo(dateStr) {
@@ -90,11 +91,11 @@ export default function DiscoverScreen({ navigation }) {
         ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 20 }} color={accent} /> : null}
         ListEmptyComponent={
           !loading && (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyEmoji}>🌍</Text>
-              <Text style={[styles.emptyTitle, { color: textPrimary }]}>Nothing here yet</Text>
-              <Text style={[styles.emptySub, { color: textSecondary }]}>Check back once more people sign up!</Text>
-            </View>
+            <EmptyState
+              emoji="📡"
+              title="Nothing here yet"
+              subtitle="Follow friends or wait for others to log activities — the feed will fill up fast."
+            />
           )
         }
         renderItem={({ item }) => (
@@ -171,8 +172,4 @@ const styles = StyleSheet.create({
   cardActions:  { flexDirection: 'row', paddingHorizontal: 14, paddingBottom: 14, gap: 20 },
   actionBtn:    { flexDirection: 'row', alignItems: 'center' },
   actionText:   { fontSize: 15, fontWeight: '600' },
-  emptyBox:     { alignItems: 'center', marginTop: 80 },
-  emptyEmoji:   { fontSize: 56, marginBottom: 14 },
-  emptyTitle:   { fontSize: 18, fontWeight: '700' },
-  emptySub:     { marginTop: 6, fontSize: 14, textAlign: 'center', paddingHorizontal: 30 },
 });

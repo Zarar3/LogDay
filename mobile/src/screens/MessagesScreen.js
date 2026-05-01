@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import EmptyState from '../components/EmptyState';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -37,11 +38,11 @@ export default function MessagesScreen({ navigation }) {
         data={convos} keyExtractor={item => item.user.id} contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={accent} />}
         ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyEmoji}>💌</Text>
-            <Text style={[styles.emptyTitle, { color: textPrimary }]}>No messages yet</Text>
-            <Text style={[styles.emptySub, { color: textSecondary }]}>Tap the 💬 next to a friend to start chatting!</Text>
-          </View>
+          <EmptyState
+            emoji="💬"
+            title="No conversations yet"
+            subtitle="Message a friend to get started."
+          />
         }
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -90,8 +91,4 @@ const styles = StyleSheet.create({
   rowPreview:   { fontSize: 13 },
   badge:        { borderRadius: 12, minWidth: 22, height: 22, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   badgeText:    { color: '#fff', fontSize: 12, fontWeight: '700' },
-  emptyBox:     { alignItems: 'center', marginTop: 80, paddingHorizontal: 32 },
-  emptyEmoji:   { fontSize: 56, marginBottom: 14 },
-  emptyTitle:   { fontSize: 18, fontWeight: '700' },
-  emptySub:     { marginTop: 6, fontSize: 14, textAlign: 'center' },
 });
