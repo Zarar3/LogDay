@@ -27,6 +27,18 @@ router.post('/request', auth, async (req, res) => {
   res.status(201).json(request);
 });
 
+// GET /api/friends/pending-count
+router.get('/pending-count', auth, async (req, res) => {
+  try {
+    const count = await prisma.friendRequest.count({
+      where: { receiverId: req.user.id, status: 'pending' },
+    });
+    res.json({ count });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/friends/requests  — incoming pending requests
 router.get('/requests', auth, async (req, res) => {
   const requests = await prisma.friendRequest.findMany({

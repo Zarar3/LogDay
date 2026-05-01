@@ -38,6 +38,18 @@ router.get('/', auth, async (req, res) => {
   res.json(Object.values(conversations));
 });
 
+// GET /api/messages/unread-count
+router.get('/unread-count', auth, async (req, res) => {
+  try {
+    const count = await prisma.message.count({
+      where: { receiverId: req.user.id, isRead: false },
+    });
+    res.json({ count });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/messages/:userId  — conversation with a specific user
 router.get('/:userId', auth, async (req, res) => {
   const { userId } = req.params;

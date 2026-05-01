@@ -7,6 +7,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
+import { useBadges } from '../context/BadgeContext';
 
 const EMOJI_GRID = [
   '😀','😂','😍','🥰','😎','😅','🤣','😢',
@@ -22,6 +23,7 @@ const EMOJI_GRID = [
 export default function ConversationScreen({ route, navigation }) {
   const { friend } = route.params;
   const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
+  const { refresh: refreshBadges } = useBadges();
   const [messages, setMessages]     = useState([]);
   const [myId, setMyId]             = useState(null);
   const [text, setText]             = useState('');
@@ -37,7 +39,10 @@ export default function ConversationScreen({ route, navigation }) {
   useFocusEffect(useCallback(() => {
     loadMessages();
     pollRef.current = setInterval(loadMessages, 5000);
-    return () => clearInterval(pollRef.current);
+    return () => {
+      clearInterval(pollRef.current);
+      refreshBadges();
+    };
   }, []));
 
   async function loadMessages() {

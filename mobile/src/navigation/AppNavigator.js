@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text } from 'react-native';
+import { Text, View, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -22,18 +22,43 @@ import UserProfileScreen  from '../screens/UserProfileScreen';
 import NewChallengeScreen  from '../screens/NewChallengeScreen';
 import WeeklyDigestScreen  from '../screens/WeeklyDigestScreen';
 import OnboardingScreen    from '../screens/OnboardingScreen';
+import { useBadges } from '../context/BadgeContext';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-function icon(emoji) {
+function icon(emoji, badge = 0) {
   return ({ focused }) => (
-    <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.45 }}>{emoji}</Text>
+    <View style={{ position: 'relative' }}>
+      <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.45 }}>{emoji}</Text>
+      {badge > 0 && (
+        <View style={{
+          position: 'absolute', top: -2, right: -6,
+          width: 14, height: 14, borderRadius: 7,
+          backgroundColor: '#ef4444',
+          justifyContent: 'center', alignItems: 'center',
+        }}>
+          <Text style={{ color: '#fff', fontSize: 8, fontWeight: '900' }}>
+            {badge > 9 ? '9+' : badge}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 
 function MainTabs({ onLogout }) {
   const { accent, tabBg, border } = useTheme();
+  const { pendingFriends, unreadMessages, refresh } = useBadges();
+
+  useEffect(() => {
+    refresh();
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') refresh();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
     <Tab.Navigator screenOptions={{
       headerShown: false,
@@ -46,8 +71,8 @@ function MainTabs({ onLogout }) {
         {props => <HomeScreen {...props} onLogout={onLogout} />}
       </Tab.Screen>
       <Tab.Screen name="Feed"     component={DiscoverScreen}     options={{ tabBarIcon: icon('📡') }} />
-      <Tab.Screen name="Friends"  component={FriendsScreen}      options={{ tabBarIcon: icon('👥') }} />
-      <Tab.Screen name="Messages" component={MessagesScreen}     options={{ tabBarIcon: icon('💬') }} />
+      <Tab.Screen name="Friends"  component={FriendsScreen}      options={{ tabBarIcon: icon('👥', pendingFriends) }} />
+      <Tab.Screen name="Messages" component={MessagesScreen}     options={{ tabBarIcon: icon('💬', unreadMessages) }} />
       <Tab.Screen name="Profile"  component={ProfileScreen}      options={{ tabBarIcon: icon('🃏') }} />
     </Tab.Navigator>
   );
