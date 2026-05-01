@@ -1,14 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, Image, TextInput, KeyboardAvoidingView, Platform, RefreshControl,
+  Alert, Image, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { removeToken } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import ImageViewer from '../components/ImageViewer';
+import SwipeableCard from '../components/SwipeableCard';
+import { getActivityIcon } from '../utils/activityIcons';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 function todayDate() { return new Date().toISOString().split('T')[0]; }
 
@@ -245,6 +248,9 @@ const DEADLINE_PRESETS = [
 
 export default function HomeScreen({ navigation, onLogout }) {
   const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg, isDark } = useTheme();
+  const flameScale   = useRef(new Animated.Value(1)).current;
+  const confettiRef  = useRef(null);
+  const confettiRef2 = useRef(null);
   const [activities, setActivities] = useState([]);
   const [streak, setStreak]           = useState(0);
   const [goals, setGoals]             = useState([]);
@@ -263,7 +269,14 @@ export default function HomeScreen({ navigation, onLogout }) {
     const today = todayDate();
     await Promise.all([
       api.get(`/activities?date=${today}`).then(r => { setActivities(r.data); setShowAllActs(false); }).catch(() => {}),
-      api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {}),
+      api.get('/activities/streak').then(r => {
+        setStreak(r.data.streak);
+        const isMilestone = r.data.streak > 0 && r.data.streak % 7 === 0;
+        Animated.sequence([
+          Animated.timing(flameScale, { toValue: isMilestone ? 1.7 : 1.4, duration: 220, useNativeDriver: true }),
+          Animated.spring(flameScale,  { toValue: 1, friction: 3, useNativeDriver: true }),
+        ]).start();
+      }).catch(() => {}),
       api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
       api.get('/presets').then(r => setPresets(r.data)).catch(() => {}),
@@ -345,7 +358,16 @@ export default function HomeScreen({ navigation, onLogout }) {
     }
     try {
       const { data } = await api.patch(`/goals/${id}/toggle`);
-      setGoals(prev => prev.map(g => g.id === id ? data : g));
+      const updatedGoals = goals.map(g => g.id === id ? data : g);
+      setGoals(updatedGoals);
+
+      const todayStr = todayDate();
+      const todayGoalsUpdated = updatedGoals.filter(g => g.date === todayStr);
+      const allDone = todayGoalsUpdated.length > 0 && todayGoalsUpdated.every(g => g.done);
+      if (allDone && !goal?.done) {
+        confettiRef.current?.start();
+        confettiRef2.current?.start();
+      }
     } catch {}
   }
 
@@ -407,6 +429,8 @@ export default function HomeScreen({ navigation, onLogout }) {
         data={showAllActs ? activities : activities.slice(0, 5)}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[accent]} />
         }
@@ -425,8 +449,10 @@ export default function HomeScreen({ navigation, onLogout }) {
 
             <View style={[styles.statsRow, { backgroundColor: statsBg, borderBottomColor: border }]}>
               <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
-                <Text style={styles.statEmoji}>🔥</Text>
-                <Text style={[styles.statNum, { color: accent }]}>{streak}</Text>
+                <Animated.View style={{ transform: [{ scale: flameScale }], alignItems: 'center' }}>
+                  <Text style={styles.statEmoji}>🔥</Text>
+                  <Text style={[styles.statNum, { color: accent }]}>{streak}</Text>
+                </Animated.View>
                 <Text style={[styles.statLabel, { color: textSecondary }]}>day streak</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: border }]}>
@@ -554,32 +580,34 @@ export default function HomeScreen({ navigation, onLogout }) {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
-            {item.imageBase64 ? (
-              <TouchableOpacity onPress={() => setViewerUri(`data:image/jpeg;base64,${item.imageBase64}`)}>
-                <Image source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }} style={styles.cardImage} resizeMode="cover" />
-              </TouchableOpacity>
-            ) : null}
-            <View style={styles.cardBody}>
-              <View style={styles.cardLeft}>
-                <Text style={[styles.type, { color: textPrimary }]}>{item.type}</Text>
-                {item.duration ? <Text style={[styles.meta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
-                {item.notes    ? <Text style={[styles.notes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
+          <SwipeableCard onDelete={() => confirmDelete(item.id)}>
+            <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+              {item.imageBase64 ? (
+                <TouchableOpacity onPress={() => setViewerUri(`data:image/jpeg;base64,${item.imageBase64}`)}>
+                  <Image source={{ uri: `data:image/jpeg;base64,${item.imageBase64}` }} style={styles.cardImage} resizeMode="cover" />
+                </TouchableOpacity>
+              ) : null}
+              <View style={styles.cardBody}>
+                <View style={[styles.iconBadge, { backgroundColor: accent + '18' }]}>
+                  <Text style={styles.cardIcon}>{getActivityIcon(item.type)}</Text>
+                </View>
+                <View style={styles.cardLeft}>
+                  <Text style={[styles.type, { color: textPrimary }]}>{item.type}</Text>
+                  {item.duration ? <Text style={[styles.meta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
+                  {item.notes    ? <Text style={[styles.notes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
+                </View>
               </View>
-              <TouchableOpacity onPress={() => confirmDelete(item.id)}>
-                <Text style={styles.delete}>✕</Text>
-              </TouchableOpacity>
+              <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item.id)}>
+                  <Text style={[styles.actionText, { color: textSecondary }]}>{item.isLiked ? '❤️' : '🤍'} {item.likeCount}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn}
+                  onPress={() => navigation.navigate('Comments', { activityId: item.id, activityType: item.type })}>
+                  <Text style={[styles.actionText, { color: textSecondary }]}>💬 {item.commentCount}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item.id)}>
-                <Text style={[styles.actionText, { color: textSecondary }]}>{item.isLiked ? '❤️' : '🤍'} {item.likeCount}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn}
-                onPress={() => navigation.navigate('Comments', { activityId: item.id, activityType: item.type })}>
-                <Text style={[styles.actionText, { color: textSecondary }]}>💬 {item.commentCount}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          </SwipeableCard>
         )}
       />
 
@@ -588,6 +616,25 @@ export default function HomeScreen({ navigation, onLogout }) {
       </TouchableOpacity>
 
       <ImageViewer uri={viewerUri} visible={!!viewerUri} onClose={() => setViewerUri(null)} />
+
+      <ConfettiCannon
+        ref={confettiRef}
+        count={120}
+        origin={{ x: -10, y: 0 }}
+        autoStart={false}
+        fadeOut
+        explosionSpeed={350}
+        fallSpeed={3000}
+      />
+      <ConfettiCannon
+        ref={confettiRef2}
+        count={120}
+        origin={{ x: 420, y: 0 }}
+        autoStart={false}
+        fadeOut
+        explosionSpeed={350}
+        fallSpeed={3000}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -629,7 +676,9 @@ const styles = StyleSheet.create({
   goalAddText:   { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 26 },
   card:          { borderRadius: 20, marginHorizontal: 12, marginBottom: 12, borderWidth: 1, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2 },
   cardImage:     { width: '100%', height: 180 },
-  cardBody:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingBottom: 8 },
+  cardBody:      { flexDirection: 'row', alignItems: 'center', padding: 14, paddingBottom: 8 },
+  iconBadge:     { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  cardIcon:      { fontSize: 26 },
   cardLeft:      { flex: 1 },
   type:          { fontSize: 16, fontWeight: '700' },
   meta:          { fontSize: 13, marginTop: 2 },

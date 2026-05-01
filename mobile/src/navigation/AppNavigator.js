@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 
@@ -20,6 +21,7 @@ import ConversationScreen  from '../screens/ConversationScreen';
 import UserProfileScreen  from '../screens/UserProfileScreen';
 import NewChallengeScreen  from '../screens/NewChallengeScreen';
 import WeeklyDigestScreen  from '../screens/WeeklyDigestScreen';
+import OnboardingScreen    from '../screens/OnboardingScreen';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -69,20 +71,31 @@ function MainStack({ onLogout }) {
 }
 
 export default function AppNavigator() {
-  const [loggedIn, setLoggedIn] = useState(null);
+  const [loggedIn,  setLoggedIn]  = useState(null);
+  const [onboarded, setOnboarded] = useState(null);
 
   useEffect(() => {
-    getToken().then(token => setLoggedIn(!!token));
+    Promise.all([
+      getToken(),
+      AsyncStorage.getItem('@logday_onboarded'),
+    ]).then(([token, ob]) => {
+      setLoggedIn(!!token);
+      setOnboarded(ob === 'true');
+    });
   }, []);
 
-  if (loggedIn === null) return null;
+  if (loggedIn === null || onboarded === null) return null;
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {loggedIn ? (
+        {loggedIn && !onboarded ? (
+          <Stack.Screen name="Onboarding">
+            {() => <OnboardingScreen onDone={() => setOnboarded(true)} />}
+          </Stack.Screen>
+        ) : loggedIn ? (
           <Stack.Screen name="Main">
-            {props => <MainStack {...props} onLogout={() => setLoggedIn(false)} />}
+            {props => <MainStack {...props} onLogout={() => { setLoggedIn(false); setOnboarded(false); }} />}
           </Stack.Screen>
         ) : (
           <>

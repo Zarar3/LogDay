@@ -130,6 +130,8 @@ export default function ConversationScreen({ route, navigation }) {
         data={messages}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         onContentSizeChange={() => listRef.current?.scrollToEnd()}
         ListEmptyComponent={
           <View style={styles.emptyBox}>

@@ -131,6 +131,8 @@ export default function CommentsScreen({ route, navigation }) {
         data={comments}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>💬</Text>

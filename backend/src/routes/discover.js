@@ -44,4 +44,24 @@ router.get('/', auth, async (req, res) => {
   })));
 });
 
+// GET /api/discover/search?q=
+router.get('/search', auth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        username: { contains: q, mode: 'insensitive' },
+        NOT: { id: req.user.id },
+      },
+      select: { id: true, username: true, avatarBase64: true },
+      take: 20,
+    });
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

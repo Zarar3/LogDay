@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, RefreshControl, ActivityIndicator, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 import ImageViewer from '../components/ImageViewer';
 import LikeButton from '../components/LikeButton';
 import EmptyState from '../components/EmptyState';
+import { getActivityIcon } from '../utils/activityIcons';
 import * as Haptics from 'expo-haptics';
 
 function timeAgo(dateStr) {
@@ -21,14 +22,18 @@ function timeAgo(dateStr) {
 const PAGE = 20;
 
 export default function DiscoverScreen({ navigation }) {
-  const { pageBg, accent, cardBg, textPrimary, textSecondary, border } = useTheme();
-  const [posts, setPosts]         = useState([]);
-  const [refreshing, setRefresh]  = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [hasMore, setHasMore]     = useState(true);
-  const [viewerUri, setViewerUri] = useState(null);
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg } = useTheme();
+  const [posts, setPosts]           = useState([]);
+  const [refreshing, setRefresh]    = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [hasMore, setHasMore]       = useState(true);
+  const [viewerUri, setViewerUri]   = useState(null);
+  const [query, setQuery]           = useState('');
+  const [searchResults, setResults] = useState([]);
+  const [searching, setSearching]   = useState(false);
   const publicOffset  = useRef(0);
   const freshingRef   = useRef(false);
+  const debounceTimer = useRef(null);
 
   useFocusEffect(useCallback(() => { loadFresh(); }, []));
 
@@ -77,6 +82,25 @@ export default function DiscoverScreen({ navigation }) {
     }
   }
 
+  function onQueryChange(text) {
+    setQuery(text);
+    clearTimeout(debounceTimer.current);
+    if (!text.trim() || text.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    debounceTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const { data } = await api.get(`/discover/search?q=${encodeURIComponent(text.trim())}`);
+        setResults(data);
+      } catch {}
+      setSearching(false);
+    }, 300);
+  }
+
+  const isSearching = query.trim().length >= 2;
+
   return (
     <View style={[styles.container, { backgroundColor: pageBg }]}>
       <View style={[styles.header, { backgroundColor: accent }]}>
@@ -84,6 +108,42 @@ export default function DiscoverScreen({ navigation }) {
         <Text style={styles.sub}>Friends & everyone's logs</Text>
       </View>
 
+      <TextInput
+        style={[styles.searchInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+        placeholder="Search people..."
+        value={query}
+        onChangeText={onQueryChange}
+        placeholderTextColor={textSecondary}
+        clearButtonMode="while-editing"
+      />
+
+      {isSearching ? (
+        <FlatList
+          data={searchResults}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            !searching
+              ? <EmptyState emoji="🔍" title="No users found" subtitle="Try a different username." />
+              : <ActivityIndicator style={{ marginTop: 40 }} color={accent} />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[styles.userRow, { backgroundColor: cardBg, borderColor: border }]}
+              onPress={() => navigation.navigate('UserProfile', { userId: item.id, username: item.username })}>
+              {item.avatarBase64 ? (
+                <Image source={{ uri: `data:image/jpeg;base64,${item.avatarBase64}` }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: accent + '22' }]}>
+                  <Text style={[styles.avatarLetter, { color: accent }]}>{item.username[0].toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={[styles.searchUsername, { color: textPrimary }]}>{item.username}</Text>
+              <Text style={[styles.searchArrow, { color: accent }]}>→</Text>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
       <FlatList
         data={posts} keyExtractor={item => item.id} contentContainerStyle={styles.list}
         onEndReached={loadMore} onEndReachedThreshold={0.4}
@@ -117,16 +177,21 @@ export default function DiscoverScreen({ navigation }) {
               </TouchableOpacity>
             ) : null}
             <View style={styles.cardBody}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Text style={[styles.actType, { color: textPrimary }]}>{item.type}</Text>
-                {item.isPR && (
-                  <View style={styles.prBadge}>
-                    <Text style={styles.prBadgeText}>🏆 PR</Text>
-                  </View>
-                )}
+              <View style={[styles.iconBadge, { backgroundColor: accent + '18' }]}>
+                <Text style={styles.typeIcon}>{getActivityIcon(item.type)}</Text>
               </View>
-              {item.duration ? <Text style={[styles.actMeta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
-              {item.notes    ? <Text style={[styles.actNotes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={[styles.actType, { color: textPrimary }]}>{item.type}</Text>
+                  {item.isPR && (
+                    <View style={styles.prBadge}>
+                      <Text style={styles.prBadgeText}>🏆 PR</Text>
+                    </View>
+                  )}
+                </View>
+                {item.duration ? <Text style={[styles.actMeta, { color: accent }]}>⏱ {item.duration} min</Text> : null}
+                {item.notes    ? <Text style={[styles.actNotes, { color: textSecondary }]}>📝 {item.notes}</Text> : null}
+              </View>
             </View>
             <View style={styles.cardActions}>
               <LikeButton
@@ -142,6 +207,7 @@ export default function DiscoverScreen({ navigation }) {
           </View>
         )}
       />
+      )}
 
       <ImageViewer uri={viewerUri} visible={!!viewerUri} onClose={() => setViewerUri(null)} />
     </View>
@@ -149,8 +215,14 @@ export default function DiscoverScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1 },
-  header:       { padding: 24, paddingTop: 56, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  container:       { flex: 1 },
+  header:          { padding: 24, paddingTop: 56, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  searchInput:     { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, margin: 12 },
+  userRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginHorizontal: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1.5 },
+  avatar:          { width: 44, height: 44, borderRadius: 22 },
+  avatarPlaceholder: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  searchUsername:  { flex: 1, fontSize: 15, fontWeight: '700' },
+  searchArrow:     { fontSize: 16, fontWeight: '700' },
   heading:      { fontSize: 26, fontWeight: '800', color: '#fff' },
   sub:          { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
   list:         { padding: 12, paddingBottom: 32 },
@@ -163,7 +235,9 @@ const styles = StyleSheet.create({
   cardTime:     { fontSize: 12, marginTop: 1 },
   cardDate:     { fontSize: 12, fontWeight: '600' },
   cardImage:    { width: '100%', height: 200 },
-  cardBody:     { padding: 14, paddingTop: 10, paddingBottom: 8 },
+  cardBody:     { flexDirection: 'row', alignItems: 'center', padding: 14, paddingTop: 10, paddingBottom: 8 },
+  iconBadge:    { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  typeIcon:     { fontSize: 26 },
   actType:      { fontSize: 16, fontWeight: '700' },
   prBadge:      { backgroundColor: '#fef3c7', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
   prBadgeText:  { fontSize: 11, fontWeight: '800', color: '#92400e' },

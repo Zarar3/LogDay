@@ -12,6 +12,7 @@ export default function FriendsScreen({ navigation }) {
   const [requests, setRequests]       = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [username, setUsername]       = useState('');
+  const [query, setQuery]             = useState('');
   const [refreshing, setRefreshing]   = useState(false);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
@@ -72,6 +73,55 @@ export default function FriendsScreen({ navigation }) {
             </View>
 
             <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: accent }]}>Your Friends</Text>
+              <TextInput
+                style={[styles.searchInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
+                placeholder="Search friends..."
+                value={query}
+                onChangeText={setQuery}
+                placeholderTextColor={textSecondary}
+                clearButtonMode="while-editing"
+              />
+              {friends.length === 0
+                ? <EmptyState emoji="👥" title="No friends yet" subtitle="Search for people you know and send them a friend request." />
+                : (() => {
+                    const filtered = query.trim()
+                      ? friends.filter(f => f.username.toLowerCase().includes(query.toLowerCase()))
+                      : friends;
+                    if (filtered.length === 0) {
+                      return <EmptyState emoji="🔍" title="No matches" subtitle={`No friends matching "${query}"`} />;
+                    }
+                    return filtered.map(item => (
+                      <View key={item.id} style={[styles.friendCard, { backgroundColor: cardBg, borderColor: border }]}>
+                        <Text style={[styles.friendName, { color: textPrimary }]}>👤 {item.username}</Text>
+                        <TouchableOpacity style={styles.msgBtn}
+                          onPress={() => navigation.navigate('Conversation', { friend: item })}>
+                          <Text style={styles.msgBtnText}>💬</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Compare', { friend: item })}>
+                          <Text style={[styles.compareText, { color: accent }]}>Compare →</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ));
+                  })()
+              }
+            </View>
+
+            {leaderboard.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: accent }]}>Leaderboard 🏆</Text>
+                {leaderboard.map((user, i) => (
+                  <View key={user.id} style={[styles.leaderCard, { backgroundColor: cardBg, borderColor: border },
+                    user.isMe && { borderColor: accent }]}>
+                    <Text style={styles.medal}>{medals[i] || `#${i + 1}`}</Text>
+                    <Text style={[styles.leaderName, { color: textPrimary }]}>{user.isMe ? 'You' : user.username}</Text>
+                    <Text style={[styles.leaderCount, { color: accent }]}>🔥 {user.streak} day streak</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: accent }]}>Pending Requests 📬</Text>
               {requests.length === 0 ? (
                 <EmptyState
@@ -90,39 +140,6 @@ export default function FriendsScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               ))}
-            </View>
-
-            {leaderboard.length > 0 && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: accent }]}>Leaderboard 🏆</Text>
-                {leaderboard.map((user, i) => (
-                  <View key={user.id} style={[styles.leaderCard, { backgroundColor: cardBg, borderColor: border },
-                    user.isMe && { borderColor: accent }]}>
-                    <Text style={styles.medal}>{medals[i] || `#${i + 1}`}</Text>
-                    <Text style={[styles.leaderName, { color: textPrimary }]}>{user.isMe ? 'You' : user.username}</Text>
-                    <Text style={[styles.leaderCount, { color: accent }]}>🔥 {user.streak} day streak</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: accent }]}>Your Friends</Text>
-              {friends.length === 0
-                ? <EmptyState emoji="👥" title="No friends yet" subtitle="Search for people you know and send them a friend request." />
-                : friends.map(item => (
-                  <View key={item.id} style={[styles.friendCard, { backgroundColor: cardBg, borderColor: border }]}>
-                    <Text style={[styles.friendName, { color: textPrimary }]}>👤 {item.username}</Text>
-                    <TouchableOpacity style={styles.msgBtn}
-                      onPress={() => navigation.navigate('Conversation', { friend: item })}>
-                      <Text style={styles.msgBtnText}>💬</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Compare', { friend: item })}>
-                      <Text style={[styles.compareText, { color: accent }]}>Compare →</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              }
             </View>
           </>
         }
@@ -150,6 +167,7 @@ const styles = StyleSheet.create({
   medal:        { fontSize: 24, marginRight: 12 },
   leaderName:   { flex: 1, fontWeight: '700', fontSize: 15 },
   leaderCount:  { fontWeight: '700' },
+  searchInput:  { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, marginBottom: 12 },
   friendCard:   { flexDirection: 'row', alignItems: 'center', borderRadius: 14, padding: 16, marginBottom: 8, borderWidth: 1.5 },
   friendName:   { flex: 1, fontSize: 15, fontWeight: '600' },
   msgBtn:       { paddingHorizontal: 10 },

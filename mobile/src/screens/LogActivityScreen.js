@@ -110,7 +110,7 @@ export default function LogActivityScreen({ navigation }) {
     !custom.includes(type.trim());
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: pageBg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: pageBg }]} contentContainerStyle={styles.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={[styles.back, { color: accent }]}>← Back</Text>
