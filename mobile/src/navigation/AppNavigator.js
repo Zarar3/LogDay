@@ -20,9 +20,11 @@ import DiscoverScreen     from '../screens/DiscoverScreen';
 import MessagesScreen     from '../screens/MessagesScreen';
 import ConversationScreen  from '../screens/ConversationScreen';
 import UserProfileScreen  from '../screens/UserProfileScreen';
-import NewChallengeScreen  from '../screens/NewChallengeScreen';
-import WeeklyDigestScreen  from '../screens/WeeklyDigestScreen';
-import OnboardingScreen    from '../screens/OnboardingScreen';
+import NewChallengeScreen      from '../screens/NewChallengeScreen';
+import NewGroupChallengeScreen from '../screens/NewGroupChallengeScreen';
+import BingoScreen             from '../screens/BingoScreen';
+import WeeklyDigestScreen      from '../screens/WeeklyDigestScreen';
+import OnboardingScreen        from '../screens/OnboardingScreen';
 import { useBadges } from '../context/BadgeContext';
 
 const Stack = createStackNavigator();
@@ -90,8 +92,10 @@ function MainStack({ onLogout }) {
       <Stack.Screen name="Comments"     component={CommentsScreen} />
       <Stack.Screen name="Conversation"  component={ConversationScreen} />
       <Stack.Screen name="UserProfile"   component={UserProfileScreen} />
-      <Stack.Screen name="NewChallenge"  component={NewChallengeScreen} />
-      <Stack.Screen name="WeeklyDigest" component={WeeklyDigestScreen} />
+      <Stack.Screen name="NewChallenge"      component={NewChallengeScreen} />
+      <Stack.Screen name="NewGroupChallenge" component={NewGroupChallengeScreen} />
+      <Stack.Screen name="Bingo"             component={BingoScreen} />
+      <Stack.Screen name="WeeklyDigest"      component={WeeklyDigestScreen} />
     </Stack.Navigator>
   );
 }

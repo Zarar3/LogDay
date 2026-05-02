@@ -14,6 +14,7 @@ function isValidEmail(email) {
 }
 
 // POST /api/auth/register
+// Validates input, checks for existing email/username, creates user with unverified email, sends verification code
 router.post('/register', async (req, res) => {
   const { email, username, password } = req.body;
 
@@ -53,7 +54,7 @@ router.post('/register', async (req, res) => {
   res.status(201).json({ pendingVerification: true, email });
 });
 
-// POST /api/auth/verify-email
+// POST /api/auth/verify-email 
 router.post('/verify-email', async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });

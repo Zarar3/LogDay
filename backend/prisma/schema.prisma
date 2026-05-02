@@ -37,6 +37,8 @@ model User {
   presets            Preset[]
   challengesSent     Challenge[] @relation("ChallengesSent")
   challengesReceived Challenge[] @relation("ChallengesReceived")
+  groupChallengesCreated    GroupChallenge[]            @relation("GroupChallengesCreated")
+  groupChallengeParticipations GroupChallengeParticipant[] @relation("GroupChallengeParticipants")
 }
 
 model Activity {
@@ -170,6 +172,30 @@ model Preset {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GroupChallenge {
+  id             String   @id @default(uuid())
+  creatorId      String
+  activityType   String
+  targetSessions Int
+  deadline       String
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+
+  creator      User                       @relation("GroupChallengesCreated", fields: [creatorId], references: [id], onDelete: Cascade)
+  participants GroupChallengeParticipant[]
+}
+
+model GroupChallengeParticipant {
+  id               String @id @default(uuid())
+  groupChallengeId String
+  userId           String
+
+  groupChallenge GroupChallenge @relation(fields: [groupChallengeId], references: [id], onDelete: Cascade)
+  user           User           @relation("GroupChallengeParticipants", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupChallengeId, userId])
 }
 
 model FriendRequest {

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity, StyleSheet,
-  Alert, Image, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Animated,
+  Alert, Image, TextInput, KeyboardAvoidingView, Platform, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../api';
@@ -10,6 +10,7 @@ import { removeToken } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import ImageViewer from '../components/ImageViewer';
 import SwipeableCard from '../components/SwipeableCard';
+import ActivityRings from '../components/ActivityRings';
 import { getActivityIcon } from '../utils/activityIcons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
@@ -48,7 +49,7 @@ function getMotivation(id) {
 
 // ─── Who's active today strip ────────────────────────────────────────────────
 function ActiveStrip({ friends, onPress }) {
-  const { accent, cardBg, textSecondary, border } = useTheme();
+  const { accent, cardBg, textSecondary } = useTheme();
   if (friends.length === 0) return null;
 
   return (
@@ -132,7 +133,43 @@ const pStyles = StyleSheet.create({
   hint:  { fontSize: 10, marginTop: 6 },
 });
 
-// ─── Challenge card ───────────────────────────────────────────────────────────
+// ─── Daily challenge card ─────────────────────────────────────────────────────
+function DailyChallengeCard({ challenge, accent, cardBg, textPrimary, textSecondary, border }) {
+  const { emoji, title, completed, friendsCompleted, totalFriends } = challenge;
+  return (
+    <View style={[dcStyles.card, { backgroundColor: cardBg, borderColor: completed ? accent : border }]}>
+      <View style={dcStyles.row}>
+        <View style={[dcStyles.badge, { backgroundColor: accent + '18' }]}>
+          <Text style={dcStyles.badgeEmoji}>{emoji}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[dcStyles.title, { color: textPrimary }]}>{title}</Text>
+          {totalFriends > 0 && (
+            <Text style={[dcStyles.friends, { color: textSecondary }]}>
+              {friendsCompleted}/{totalFriends} friends done
+            </Text>
+          )}
+        </View>
+        <View style={[dcStyles.status, { backgroundColor: completed ? accent : border + '80' }]}>
+          <Text style={dcStyles.statusText}>{completed ? '✓ Done' : 'Today'}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const dcStyles = StyleSheet.create({
+  card:       { borderRadius: 16, borderWidth: 1.5, padding: 12, marginBottom: 8 },
+  row:        { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  badge:      { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  badgeEmoji: { fontSize: 22 },
+  title:      { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  friends:    { fontSize: 12, fontWeight: '500' },
+  status:     { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  statusText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+});
+
+// ─── 1-on-1 challenge card ────────────────────────────────────────────────────
 function ChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, textSecondary, border }) {
   const { isChallenger, challenger, challengee, activityType, targetSessions, deadline, myCount, theirCount } = challenge;
   const opponent   = isChallenger ? challengee : challenger;
@@ -152,8 +189,6 @@ function ChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, tex
       <Text style={[cStyles.sub, { color: textSecondary }]}>
         vs <Text style={{ fontWeight: '800', color: accent }}>{opponent.username}</Text>  •  {targetSessions} sessions
       </Text>
-
-      {/* You */}
       <View style={cStyles.barRow}>
         <Text style={[cStyles.barLabel, { color: textSecondary }]}>You</Text>
         <View style={[cStyles.barBg, { borderColor: border }]}>
@@ -161,8 +196,6 @@ function ChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, tex
         </View>
         <Text style={[cStyles.barCount, { color: textPrimary }]}>{myCount}/{targetSessions}</Text>
       </View>
-
-      {/* Them */}
       <View style={cStyles.barRow}>
         <Text style={[cStyles.barLabel, { color: textSecondary }]}>{opponent.username.slice(0, 6)}</Text>
         <View style={[cStyles.barBg, { borderColor: border }]}>
@@ -170,7 +203,6 @@ function ChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, tex
         </View>
         <Text style={[cStyles.barCount, { color: textPrimary }]}>{theirCount}/{targetSessions}</Text>
       </View>
-
       {bothDone && (
         <TouchableOpacity style={[cStyles.doneBtn, { backgroundColor: accent }]} onPress={() => onComplete(challenge.id)}>
           <Text style={cStyles.doneBtnText}>🏆 Mark Complete</Text>
@@ -195,35 +227,75 @@ const cStyles = StyleSheet.create({
   doneBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 });
 
-// ─── Liquid-fill circle for overall goal progress ─────────────────────────────
-function GoalRing({ done, total, size, accent, bgColor }) {
-  const pct = total === 0 ? 0 : Math.min(1, done / total);
-  const allDone = total > 0 && done === total;
+// ─── Group challenge card ─────────────────────────────────────────────────────
+function GroupChallengeCard({ challenge, onComplete, accent, cardBg, textPrimary, textSecondary, border }) {
+  const { activityType, targetSessions, deadline, members = [], totalSessions = 0, groupTarget = 0 } = challenge;
+  const pct      = groupTarget > 0 ? Math.min(1, totalSessions / groupTarget) : 0;
+  const allDone  = pct >= 1;
+  const daysLeft = Math.max(0, Math.ceil((new Date(deadline) - new Date()) / 86400000));
 
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#e2e8f0' }}>
-      <View style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: `${pct * 100}%`,
-        backgroundColor: allDone ? accent : accent + 'cc',
-      }} />
-      <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-        {total === 0 ? (
-          <Text style={{ fontSize: size * 0.22, color: '#94a3b8' }}>—</Text>
-        ) : (
-          <>
-            <Text style={{ fontSize: size * 0.22, fontWeight: '900', color: pct > 0.55 ? '#fff' : '#1e293b', lineHeight: size * 0.26 }}>
-              {done}/{total}
-            </Text>
-            {allDone && <Text style={{ fontSize: size * 0.16, color: '#fff' }}>✓</Text>}
-          </>
-        )}
+    <View style={[gcStyles.card, { backgroundColor: cardBg, borderColor: allDone ? accent : border }]}>
+      <View style={gcStyles.header}>
+        <Text style={[gcStyles.title, { color: textPrimary }]}>🏆 {activityType}</Text>
+        <Text style={[gcStyles.days, { color: daysLeft <= 2 ? '#ef4444' : textSecondary }]}>
+          {daysLeft === 0 ? 'Ends today!' : `${daysLeft}d left`}
+        </Text>
       </View>
+      <Text style={[gcStyles.sub, { color: textSecondary }]}>
+        {members.length} players  •  {targetSessions} sessions each
+      </Text>
+      <View style={gcStyles.barRow}>
+        <View style={[gcStyles.barBg, { borderColor: border }]}>
+          <View style={[gcStyles.barFill, { width: `${pct * 100}%`, backgroundColor: accent }]} />
+        </View>
+        <Text style={[gcStyles.barCount, { color: textPrimary }]}>
+          {totalSessions}/{groupTarget}
+        </Text>
+      </View>
+      <View style={gcStyles.members}>
+        {members.map(m => (
+          <View key={m.id} style={[gcStyles.member, {
+            backgroundColor: m.count >= targetSessions ? accent + '18' : 'transparent',
+            borderColor: border,
+          }]}>
+            <Text style={[gcStyles.memberName, { color: textSecondary }]} numberOfLines={1}>
+              {m.username.slice(0, 8)}
+            </Text>
+            <Text style={[gcStyles.memberCount, { color: m.count >= targetSessions ? accent : textPrimary }]}>
+              {m.count}/{targetSessions}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {allDone && (
+        <TouchableOpacity style={[gcStyles.doneBtn, { backgroundColor: accent }]} onPress={() => onComplete(challenge.id)}>
+          <Text style={gcStyles.doneBtnText}>🏆 Mark Complete</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
-// ─── Circle toggle per goal ───────────────────────────────────────────────────
+const gcStyles = StyleSheet.create({
+  card:        { borderRadius: 16, borderWidth: 1.5, padding: 14, marginBottom: 10 },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  title:       { fontSize: 15, fontWeight: '800' },
+  days:        { fontSize: 12, fontWeight: '700' },
+  sub:         { fontSize: 12, marginBottom: 10 },
+  barRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  barBg:       { flex: 1, height: 10, borderRadius: 5, borderWidth: 1, overflow: 'hidden' },
+  barFill:     { height: '100%', borderRadius: 5 },
+  barCount:    { width: 48, fontSize: 11, fontWeight: '700', textAlign: 'right' },
+  members:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  member:      { borderRadius: 10, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  memberName:  { fontSize: 10, fontWeight: '600' },
+  memberCount: { fontSize: 11, fontWeight: '800' },
+  doneBtn:     { marginTop: 8, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  doneBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+});
+
+// ─── Liquid-fill circle for overall goal progress ─────────────────────────────
 function GoalCircle({ done, accent }) {
   const size = 26;
   if (done) {
@@ -247,42 +319,38 @@ const DEADLINE_PRESETS = [
 ];
 
 export default function HomeScreen({ navigation, onLogout }) {
-  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg, isDark } = useTheme();
-  const flameScale   = useRef(new Animated.Value(1)).current;
+  const { pageBg, accent, cardBg, textPrimary, textSecondary, border, inputBg, statsBg } = useTheme();
   const confettiRef  = useRef(null);
   const confettiRef2 = useRef(null);
-  const [activities, setActivities] = useState([]);
-  const [streak, setStreak]           = useState(0);
-  const [goals, setGoals]             = useState([]);
-  const [goalText, setGoalText]       = useState('');
-  const [deadlineDays, setDeadline]   = useState(0);
-  const [viewerUri, setViewerUri]     = useState(null);
-  const [activeFriends, setActiveFriends] = useState([]);
-  const [refreshing, setRefreshing]       = useState(false);
-  const [presets, setPresets]             = useState([]);
-  const [challenges, setChallenges]       = useState([]);
-  const [weekSummary, setWeekSummary]     = useState(null);
-  const [showAllActs, setShowAllActs]     = useState(false);
+  const [activities, setActivities]           = useState([]);
+  const [streak, setStreak]                   = useState(0);
+  const [goals, setGoals]                     = useState([]);
+  const [goalText, setGoalText]               = useState('');
+  const [deadlineDays, setDeadline]           = useState(0);
+  const [viewerUri, setViewerUri]             = useState(null);
+  const [activeFriends, setActiveFriends]     = useState([]);
+  const [refreshing, setRefreshing]           = useState(false);
+  const [presets, setPresets]                 = useState([]);
+  const [challenges, setChallenges]           = useState([]);
+  const [groupChallenges, setGroupChallenges] = useState([]);
+  const [dailyChallenge, setDailyChallenge]   = useState(null);
+  const [weekSummary, setWeekSummary]         = useState(null);
+  const [showAllActs, setShowAllActs]         = useState(false);
   const reflection = REFLECTIONS[new Date().getDay() % REFLECTIONS.length];
 
   async function loadAll() {
     const today = todayDate();
     await Promise.all([
       api.get(`/activities?date=${today}`).then(r => { setActivities(r.data); setShowAllActs(false); }).catch(() => {}),
-      api.get('/activities/streak').then(r => {
-        setStreak(r.data.streak);
-        const isMilestone = r.data.streak > 0 && r.data.streak % 7 === 0;
-        Animated.sequence([
-          Animated.timing(flameScale, { toValue: isMilestone ? 1.7 : 1.4, duration: 220, useNativeDriver: true }),
-          Animated.spring(flameScale,  { toValue: 1, friction: 3, useNativeDriver: true }),
-        ]).start();
-      }).catch(() => {}),
+      api.get('/activities/streak').then(r => setStreak(r.data.streak)).catch(() => {}),
       api.get('/goals/active').then(r => setGoals(r.data)).catch(() => {}),
       api.get('/friends/active-today').then(r => setActiveFriends(r.data)).catch(() => {}),
       api.get('/presets').then(r => setPresets(r.data)).catch(() => {}),
       api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {}),
       api.get('/activities/weekly-summary').then(r => setWeekSummary(r.data)).catch(() => {}),
     ]);
+    api.get('/daily-challenge').then(r => setDailyChallenge(r.data)).catch(() => {});
+    api.get('/group-challenges').then(r => setGroupChallenges(r.data)).catch(() => {});
   }
 
   async function onRefresh() {
@@ -360,7 +428,6 @@ export default function HomeScreen({ navigation, onLogout }) {
       const { data } = await api.patch(`/goals/${id}/toggle`);
       const updatedGoals = goals.map(g => g.id === id ? data : g);
       setGoals(updatedGoals);
-
       const todayStr = todayDate();
       const todayGoalsUpdated = updatedGoals.filter(g => g.date === todayStr);
       const allDone = todayGoalsUpdated.length > 0 && todayGoalsUpdated.every(g => g.done);
@@ -375,6 +442,14 @@ export default function HomeScreen({ navigation, onLogout }) {
     try {
       await api.patch(`/challenges/${id}/complete`);
       setChallenges(prev => prev.filter(c => c.id !== id));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  }
+
+  async function completeGroupChallenge(id) {
+    try {
+      await api.patch(`/group-challenges/${id}/complete`);
+      setGroupChallenges(prev => prev.filter(c => c.id !== id));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
   }
@@ -441,31 +516,20 @@ export default function HomeScreen({ navigation, onLogout }) {
               onPress={(userId) => navigation.navigate('UserProfile', { userId })}
             />
 
-            <PresetStrip
-              presets={presets}
-              onLog={logPreset}
-              onDelete={deletePreset}
-            />
+            <PresetStrip presets={presets} onLog={logPreset} onDelete={deletePreset} />
 
-            <View style={[styles.statsRow, { backgroundColor: statsBg }]}>
-              <View style={styles.statCard}>
-                <Animated.View style={{ transform: [{ scale: flameScale }], alignItems: 'center' }}>
-                  <Text style={styles.statEmoji}>🔥</Text>
-                  <Text style={[styles.statNum, { color: accent }]}>{streak}</Text>
-                </Animated.View>
-                <Text style={[styles.statLabel, { color: textSecondary }]}>day streak</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: border }]} />
-              <View style={styles.statCard}>
-                <Text style={styles.statEmoji}>📋</Text>
-                <Text style={[styles.statNum, { color: accent }]}>{activities.length}</Text>
-                <Text style={[styles.statLabel, { color: textSecondary }]}>logged</Text>
-              </View>
-              <View style={[styles.statDivider, { backgroundColor: border }]} />
-              <View style={styles.statCard}>
-                <GoalRing done={doneCount} total={goals.length} size={44} accent={accent} bgColor={cardBg} />
-                <Text style={[styles.statLabel, { color: textSecondary, marginTop: 4 }]}>goals</Text>
-              </View>
+            {/* Activity rings — replaces flat stat strip */}
+            <View style={{ backgroundColor: statsBg }}>
+              <ActivityRings
+                streak={streak}
+                sessionsToday={activities.length}
+                goalsDone={doneCount}
+                goalsTotal={goals.length}
+                accent={accent}
+                border={border}
+                textSecondary={textSecondary}
+                textPrimary={textPrimary}
+              />
             </View>
 
             <View style={[styles.reflectionBox, { borderLeftColor: accent }]}>
@@ -494,7 +558,6 @@ export default function HomeScreen({ navigation, onLogout }) {
                 <Text style={[styles.noGoals, { color: textSecondary }]}>No goals yet — add one below!</Text>
               )}
 
-              {/* Deadline presets */}
               <View style={styles.presetRow}>
                 {DEADLINE_PRESETS.map(p => (
                   <TouchableOpacity key={p.days} onPress={() => setDeadline(p.days)}
@@ -504,7 +567,6 @@ export default function HomeScreen({ navigation, onLogout }) {
                 ))}
               </View>
 
-              {/* Goal input */}
               <View style={styles.goalInputRow}>
                 <TextInput
                   style={[styles.goalInput, { backgroundColor: inputBg, borderColor: border, color: textPrimary }]}
@@ -518,6 +580,22 @@ export default function HomeScreen({ navigation, onLogout }) {
               </View>
             </View>
 
+            {/* Daily challenge */}
+            {dailyChallenge && (
+              <View style={[styles.section, { paddingTop: 0 }]}>
+                <Text style={[styles.sectionTitle, { color: accent }]}>Daily Challenge</Text>
+                <DailyChallengeCard
+                  challenge={dailyChallenge}
+                  accent={accent}
+                  cardBg={cardBg}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  border={border}
+                />
+              </View>
+            )}
+
+            {/* 1-on-1 challenges */}
             {challenges.length > 0 && (
               <View style={[styles.section, { paddingTop: 0 }]}>
                 <Text style={[styles.sectionTitle, { color: accent }]}>Challenges ⚔️</Text>
@@ -536,6 +614,39 @@ export default function HomeScreen({ navigation, onLogout }) {
               </View>
             )}
 
+            {/* Group challenges */}
+            <View style={[styles.section, { paddingTop: 0 }]}>
+              <View style={styles.sectionRow}>
+                <Text style={[styles.sectionTitle, { color: accent, marginBottom: 0 }]}>Group Challenges 🏆</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('NewGroupChallenge')}>
+                  <Text style={[styles.sectionLink, { color: accent }]}>+ New</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ height: 8 }} />
+              {groupChallenges.map(c => (
+                <GroupChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  onComplete={completeGroupChallenge}
+                  accent={accent}
+                  cardBg={cardBg}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  border={border}
+                />
+              ))}
+              {groupChallenges.length === 0 && (
+                <TouchableOpacity
+                  style={[styles.emptyGC, { backgroundColor: cardBg, borderColor: border }]}
+                  onPress={() => navigation.navigate('NewGroupChallenge')}>
+                  <Text style={styles.emptyGCEmoji}>🏆</Text>
+                  <Text style={[styles.emptyGCTitle, { color: textPrimary }]}>Start a Group Challenge</Text>
+                  <Text style={[styles.emptyGCSub, { color: textSecondary }]}>Compete with up to 4 friends</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Weekly digest + Bingo row */}
             {weekSummary && (
               <TouchableOpacity
                 style={[wStyles.card, { backgroundColor: cardBg, borderColor: border }]}
@@ -559,6 +670,19 @@ export default function HomeScreen({ navigation, onLogout }) {
                 </View>
               </TouchableOpacity>
             )}
+
+            {/* Bingo button */}
+            <TouchableOpacity
+              style={[bingoStyles.btn, { backgroundColor: cardBg, borderColor: border }]}
+              onPress={() => navigation.navigate('Bingo')}
+              activeOpacity={0.75}>
+              <Text style={bingoStyles.emoji}>🎲</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[bingoStyles.title, { color: textPrimary }]}>Activity Bingo</Text>
+                <Text style={[bingoStyles.sub, { color: textSecondary }]}>Log 5 in a row this week</Text>
+              </View>
+              <Text style={[bingoStyles.arrow, { color: accent }]}>→</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.sectionTitle2, { color: accent }]}>Activities</Text>
           </>
@@ -621,24 +745,10 @@ export default function HomeScreen({ navigation, onLogout }) {
 
       <ImageViewer uri={viewerUri} visible={!!viewerUri} onClose={() => setViewerUri(null)} />
 
-      <ConfettiCannon
-        ref={confettiRef}
-        count={120}
-        origin={{ x: -10, y: 0 }}
-        autoStart={false}
-        fadeOut
-        explosionSpeed={350}
-        fallSpeed={3000}
-      />
-      <ConfettiCannon
-        ref={confettiRef2}
-        count={120}
-        origin={{ x: 420, y: 0 }}
-        autoStart={false}
-        fadeOut
-        explosionSpeed={350}
-        fallSpeed={3000}
-      />
+      <ConfettiCannon ref={confettiRef} count={120} origin={{ x: -10, y: 0 }}
+        autoStart={false} fadeOut explosionSpeed={350} fallSpeed={3000} />
+      <ConfettiCannon ref={confettiRef2} count={120} origin={{ x: 420, y: 0 }}
+        autoStart={false} fadeOut explosionSpeed={350} fallSpeed={3000} />
     </KeyboardAvoidingView>
   );
 }
@@ -652,16 +762,12 @@ const styles = StyleSheet.create({
   logoutBtn:     { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 4 },
   logoutText:    { color: '#fff', fontSize: 13, fontWeight: '600' },
   list:          { paddingBottom: 100 },
-  statsRow:      { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: 12 },
-  statCard:      { flex: 1, alignItems: 'center', paddingVertical: 6 },
-  statDivider:   { width: 1, marginVertical: 8 },
-  statEmoji:     { fontSize: 16 },
-  statNum:       { fontSize: 22, fontWeight: '900' },
-  statLabel:     { fontSize: 10, fontWeight: '600', marginTop: 2 },
   reflectionBox: { marginHorizontal: 16, marginVertical: 8, borderLeftWidth: 3, paddingLeft: 12, paddingVertical: 4 },
   reflectionText:{ fontWeight: '500', fontSize: 13, fontStyle: 'italic', lineHeight: 20 },
   section:       { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
+  sectionRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle:  { fontWeight: '800', fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8, opacity: 0.55 },
+  sectionLink:   { fontSize: 13, fontWeight: '800' },
   sectionTitle2: { fontWeight: '800', fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4, opacity: 0.55 },
   groupLabel:    { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 6 },
   noGoals:       { fontSize: 13, fontStyle: 'italic', marginBottom: 10 },
@@ -688,7 +794,6 @@ const styles = StyleSheet.create({
   type:          { fontSize: 15, fontWeight: '700' },
   meta:          { fontSize: 13, marginTop: 2 },
   notes:         { fontSize: 13, marginTop: 2 },
-  delete:        { color: '#94a3b8', fontSize: 18, paddingLeft: 12 },
   cardActions:   { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 10, gap: 14 },
   actionBtn:     { flexDirection: 'row', alignItems: 'center' },
   actionText:    { fontSize: 14, fontWeight: '600' },
@@ -696,10 +801,13 @@ const styles = StyleSheet.create({
   emptyEmoji:    { fontSize: 48, marginBottom: 10 },
   emptyText:     { fontSize: 17, fontWeight: '700' },
   emptySubText:  { fontSize: 14, marginTop: 4 },
+  emptyGC:       { borderRadius: 16, borderWidth: 1, padding: 16, alignItems: 'center', marginBottom: 4 },
+  emptyGCEmoji:  { fontSize: 32, marginBottom: 6 },
+  emptyGCTitle:  { fontSize: 15, fontWeight: '800', marginBottom: 3 },
+  emptyGCSub:    { fontSize: 12 },
   fab:           { position: 'absolute', bottom: 24, left: 20, right: 20, padding: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6 },
   fabText:       { color: '#fff', fontWeight: '800', fontSize: 16 },
-  seeMoreBtn:    { marginHorizontal: 12, marginBottom: 16, paddingVertical: 10, borderRadius: 14,
-                   borderWidth: 1, alignItems: 'center' },
+  seeMoreBtn:    { marginHorizontal: 12, marginBottom: 16, paddingVertical: 10, borderRadius: 14, borderWidth: 1, alignItems: 'center' },
   seeMoreText:   { fontWeight: '700', fontSize: 14 },
 });
 
@@ -715,4 +823,13 @@ const wStyles = StyleSheet.create({
   streakNum:  { fontSize: 14, fontWeight: '900' },
   streakLbl:  { fontSize: 10, fontWeight: '600' },
   cta:        { fontSize: 13, fontWeight: '800' },
+});
+
+const bingoStyles = StyleSheet.create({
+  btn:   { marginHorizontal: 12, marginBottom: 8, borderRadius: 16, borderWidth: 1,
+           padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  emoji: { fontSize: 28 },
+  title: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
+  sub:   { fontSize: 12 },
+  arrow: { fontSize: 20, fontWeight: '700' },
 });

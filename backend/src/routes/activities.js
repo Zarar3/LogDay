@@ -154,6 +154,34 @@ router.get('/weekly-summary', auth, async (req, res) => {
   });
 });
 
+// GET /api/activities/time-insights  — hour-of-day distribution + personality label
+router.get('/time-insights', auth, async (req, res) => {
+  const acts = await prisma.activity.findMany({
+    where:  { userId: req.user.id },
+    select: { loggedAt: true },
+  });
+  if (acts.length < 3) return res.json({ label: null, topHour: null, distribution: [] });
+
+  const hourCounts = Array(24).fill(0);
+  acts.forEach(a => { hourCounts[new Date(a.loggedAt).getHours()]++; });
+
+  const topHour = hourCounts.indexOf(Math.max(...hourCounts));
+  let label = 'All-Day Grinder';
+  if      (topHour >= 5  && topHour < 10) label = 'Morning Warrior 🌅';
+  else if (topHour >= 10 && topHour < 13) label = 'Midday Mover ☀️';
+  else if (topHour >= 13 && topHour < 17) label = 'Afternoon Grinder 💪';
+  else if (topHour >= 17 && topHour < 21) label = 'Evening Athlete 🌆';
+  else                                     label = 'Night Owl 🦉';
+
+  const max = Math.max(...hourCounts, 1);
+  res.json({
+    label,
+    topHour,
+    total: acts.length,
+    distribution: hourCounts.map((count, hour) => ({ hour, count, ratio: count / max })),
+  });
+});
+
 // GET /api/activities/type-streaks  — consecutive-day streak per activity type
 router.get('/type-streaks', auth, async (req, res) => {
   const acts = await prisma.activity.findMany({

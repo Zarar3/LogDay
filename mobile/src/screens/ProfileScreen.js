@@ -301,6 +301,7 @@ export default function ProfileScreen() {
   const [calendarDates, setCalendar]  = useState([]);
   const [typeStreaks, setTypeStreaks]  = useState([]);
   const [badges, setBadges]           = useState([]);
+  const [timeInsights, setTimeInsights] = useState(null);
 
   const saveTimer = useRef({});
   const cardRef   = useRef(null);
@@ -333,8 +334,9 @@ export default function ProfileScreen() {
       allActs.forEach(a => { counts[a.type] = (counts[a.type] || 0) + 1; });
       setTop(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4));
     } catch {}
-    // Separate so a missing endpoint doesn't block the whole screen
+    // Separate so missing endpoints don't block the whole screen
     api.get('/activities/type-streaks').then(r => setTypeStreaks(r.data)).catch(() => {});
+    api.get('/activities/time-insights').then(r => setTimeInsights(r.data)).catch(() => {});
   }
 
   async function pickAvatar() {
@@ -522,6 +524,36 @@ export default function ProfileScreen() {
               <Text style={[tsStyles.num, { color: appAccent }]}>{streak}d</Text>
             </View>
           ))}
+        </View>
+      )}
+
+      {/* Time-of-day insights */}
+      {timeInsights?.label && (
+        <View style={[styles.colorSection, { backgroundColor: cardBg, borderColor: border }]}>
+          <Text style={[styles.sectionHeader, { color: textPrimary, marginBottom: 4 }]}>
+            When You're Most Active
+          </Text>
+          <Text style={[tiStyles.label, { color: appAccent }]}>{timeInsights.label}</Text>
+          <Text style={[tiStyles.sub, { color: textSecondary }]}>
+            Based on {timeInsights.total} logged sessions
+          </Text>
+          <View style={tiStyles.bars}>
+            {timeInsights.distribution
+              .filter((_, i) => i % 2 === 0)
+              .map(({ hour, ratio }) => (
+                <View key={hour} style={tiStyles.barCol}>
+                  <View style={[tiStyles.barFill, {
+                    height: Math.max(3, Math.round(ratio * 48)),
+                    backgroundColor: ratio > 0 ? appAccent : (appAccent + '30'),
+                  }]} />
+                  {hour % 6 === 0 && (
+                    <Text style={[tiStyles.hourLabel, { color: textSecondary }]}>
+                      {hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`}
+                    </Text>
+                  )}
+                </View>
+              ))}
+          </View>
         </View>
       )}
 
@@ -718,6 +750,15 @@ const trophyStyles = StyleSheet.create({
   row:   { gap: 8, paddingRight: 4 },
   item:  { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
   emoji: { fontSize: 20 },
+});
+
+const tiStyles = StyleSheet.create({
+  label:    { fontSize: 18, fontWeight: '900', marginBottom: 2 },
+  sub:      { fontSize: 12, marginBottom: 14 },
+  bars:     { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginTop: 4 },
+  barCol:   { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
+  barFill:  { width: '100%', borderRadius: 3 },
+  hourLabel:{ fontSize: 8, fontWeight: '600', marginTop: 2 },
 });
 
 const achieveStyles = StyleSheet.create({
