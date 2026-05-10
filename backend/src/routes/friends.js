@@ -177,20 +177,26 @@ router.get('/feed', auth, async (req, res) => {
     },
   });
 
-  const result = activities.map(a => ({
-    id:          a.id,
-    userId:      a.userId,
-    username:    a.user.username,
-    type:        a.type,
-    duration:    a.duration,
-    notes:       a.notes,
-    imageBase64: a.imageBase64,
-    date:        a.date,
-    loggedAt:    a.loggedAt,
-    likeCount:   a._count.likes,
-    commentCount:a._count.comments,
-    isLiked:     a.likes.length > 0,
-  }));
+  const seen = new Set();
+  const result = [];
+  for (const a of activities) {
+    if (seen.has(a.userId)) continue;
+    seen.add(a.userId);
+    result.push({
+      id:          a.id,
+      userId:      a.userId,
+      username:    a.user.username,
+      type:        a.type,
+      duration:    a.duration,
+      notes:       a.notes,
+      imageBase64: a.imageBase64,
+      date:        a.date,
+      loggedAt:    a.loggedAt,
+      likeCount:   a._count.likes,
+      commentCount:a._count.comments,
+      isLiked:     a.likes.length > 0,
+    });
+  }
 
   res.json(result);
 });
