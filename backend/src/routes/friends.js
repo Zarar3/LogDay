@@ -239,12 +239,18 @@ router.get('/unified-feed', auth, async (req, res) => {
 
   let friendPosts = [];
   if (publicOffset === 0 && friendIds.length > 0) {
-    friendPosts = await prisma.activity.findMany({
+    const raw = await prisma.activity.findMany({
       where:   { userId: { in: friendIds } },
       orderBy: { loggedAt: 'desc' },
-      take:    5,
+      take:    50,
       include,
     });
+    const seen = new Set();
+    for (const a of raw) {
+      if (seen.has(a.userId)) continue;
+      seen.add(a.userId);
+      friendPosts.push(a);
+    }
   }
 
   const publicPosts = await prisma.activity.findMany({

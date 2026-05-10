@@ -1,9 +1,13 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend;
+function getResend() {
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
+}
 
 async function sendVerificationEmail(to, code) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    process.env.EMAIL_FROM || 'LogDay <onboarding@resend.dev>',
     to,
     subject: 'Your LogDay verification code',
