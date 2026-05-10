@@ -6,7 +6,7 @@ const ALL_TYPES = [
   'Running','Walking','Gym','Reading','Cooking','Gaming','Studying','Meditation',
   'Music','Art','Cycling','Swimming','Yoga','Hiking','Stretching',
   'Football','Basketball','Tennis','Volleyball','Boxing',
-  'Dancing','Climbing','Rowing','Pilates','Writing',
+  'Dancing','Climbing','Rowing','Writing',
 ];
 
 function seededShuffle(arr, seed) {

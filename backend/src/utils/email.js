@@ -1,21 +1,12 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host:   process.env.EMAIL_HOST,
-  port:   parseInt(process.env.EMAIL_PORT || '587'),
-  secure: process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendVerificationEmail(to, code) {
-  await transporter.sendMail({
-    from:    process.env.EMAIL_FROM || process.env.EMAIL_USER,
+  await resend.emails.send({
+    from:    process.env.EMAIL_FROM || 'LogDay <onboarding@resend.dev>',
     to,
     subject: 'Your LogDay verification code',
-    text:    `Your LogDay verification code is: ${code}\n\nThis code expires in 15 minutes.`,
     html:    `
       <div style="font-family:sans-serif;max-width:420px;margin:0 auto;padding:36px;text-align:center;background:#f8fafc;border-radius:20px">
         <h1 style="color:#4F46E5;margin-bottom:6px">🔐 LogDay</h1>

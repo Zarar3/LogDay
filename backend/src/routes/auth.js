@@ -37,13 +37,20 @@ router.post('/register', async (req, res) => {
     return res.status(409).json({ error: 'Email or username already taken' });
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const code    = generateCode();
+  const expiry  = new Date(Date.now() + 15 * 60 * 1000);
 
-  const newUser = await prisma.user.create({
-    data: { email, username, passwordHash, emailVerified: true },
+  await prisma.user.create({
+    data: { email, username, passwordHash, emailVerifyCode: code, emailVerifyExpiry: expiry },
   });
 
-  const token = jwt.sign({ id: newUser.id, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.status(201).json({ token, user: { id: newUser.id, email: newUser.email, username: newUser.username } });
+  try {
+    await sendVerificationEmail(email, code);
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+  }
+
+  res.status(201).json({ pendingVerification: true, email });
 });
 
 // POST /api/auth/verify-email 
@@ -106,6 +113,9 @@ router.post('/login', async (req, res) => {
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+  if (!user.emailVerified)
+    return res.status(403).json({ error: 'Please verify your email before signing in', notVerified: true, email });
 
   const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { id: user.id, email: user.email, username: user.username } });
